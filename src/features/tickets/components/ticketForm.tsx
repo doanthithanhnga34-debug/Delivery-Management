@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { SubmitEvent, useState } from "react";
 import { Plus, UserRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -21,26 +21,36 @@ import {
 export function TicketForm() {
   const [shipperName, setShipperName] = useState("");
   const [content, setContent] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-async  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
+    const name = shipperName.trim();
+    const ticketContent = content.trim();
+    if (!name || !ticketContent || isSubmitting) return;
 
-    const response = await fetch("/api/tickets", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        shipperName,
-        content,
-      }),
-    });
-
-    if (!response) {
-      throw new Error("Tạo phiếu thất bại");
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/tickets", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          shipperName: name,
+          content: ticketContent,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.message || "Gửi phiếu thất bại");
+      }
+      console.log("Server response", result);
+    } catch (error) {
+      console.error("Submit ticket error:", error);
+    } finally {
+      setIsSubmitting(false);
     }
-    const result = await response.json();
-    console.log("result", result)
   }
 
   return (
@@ -133,10 +143,11 @@ async  function handleSubmit(e: FormEvent<HTMLFormElement>) {
 
             <Button
               type="submit"
+              disabled={isSubmitting}
               className="h-11 w-full rounded-xl bg-[#d92d45] text-[13px] font-semibold text-white shadow-none hover:bg-[#116E4A]"
             >
               <Plus className="size-4" strokeWidth={2} />
-              Tạo phiếu
+              {isSubmitting ? "Đang xử lý" : "Tạo phiếu"}
             </Button>
           </FieldGroup>
         </CardContent>

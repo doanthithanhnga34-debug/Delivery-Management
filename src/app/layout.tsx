@@ -24,7 +24,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi" suppressHydrationWarning className={cn("font-sans", geist.variable)}>
-      <body className="antialiased">
+      <body suppressHydrationWarning className="antialiased">
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

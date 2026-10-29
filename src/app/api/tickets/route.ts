@@ -1,25 +1,19 @@
-// import { NextResponse } from "next/server";
-// import { createTicket } from "@/server/modules/tickets/ticket.service";
+import { NextResponse } from "next/server";
 
-// export async function POST(request: Request) {
-//   try {
-//     const body = await request.json();
+export async function GET() {
+  return NextResponse.json({
+    success: true,
+    message: "Tickets API is working",
+  });
+}
 
-//     const result = await createTicket(body);
+export async function POST(request: Request) {
+  const body = await request.json();
 
-//     return NextResponse.json({
-//       success: true,
-//       data: result,
-//     });
-//   } catch (error) {
-//     console.error("[POST /api/tickets]", error);
+  console.log("Received:", body);
 
-//     return NextResponse.json(
-//       {
-//         success: false,
-//         message: "Không thể tạo phiếu",
-//       },
-//       { status: 500 }
-//     );
-//   }
-// }
+  return NextResponse.json({
+    success: true,
+    data: body,
+  });
+}

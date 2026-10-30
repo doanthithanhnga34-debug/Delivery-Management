@@ -3,7 +3,7 @@ export interface Ticket {
   shipperName: string;
   deliveryDate: string;
   shippingFee: number | null;
-  codAmount: number;
+  codAmount: string | null;
   transportFee: number;
   otherFee: number;
   createdAt: string;

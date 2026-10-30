@@ -8,6 +8,12 @@ export type RawShippingRow = {
   cells: string[];
 };
 
+export interface ShippingRate {
+  district: string;
+  ward: string;
+  fee: number;
+}
+
 export async function getRawShippingRules(): Promise<RawShippingRow[]> {
   const { spreadsheetId, sheetName } = googleConfig;
 
@@ -37,4 +43,26 @@ export async function getRawShippingRules(): Promise<RawShippingRow[]> {
     rowNumber: index + 1,
     cells: row.map((cell) => String(cell ?? "")),
   }));
+}
+
+export function mapShippingRates(rows: string[][]): ShippingRate[] {
+  return rows.flatMap((row) => {
+    const [district, ward, fee] = row;
+    const parsedFee = Number(String(fee ?? "").replace(/[^\d]/g, ""));
+    if (
+      !district?.trim() ||
+      !ward?.trim() ||
+      !fee?.trim() ||
+      !Number.isFinite(parsedFee)
+    ) {
+      return [];
+    }
+    return [
+      {
+        district: district.trim(),
+        ward: ward.trim(),
+        fee: parsedFee,
+      },
+    ];
+  });
 }

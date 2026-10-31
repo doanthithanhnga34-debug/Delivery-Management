@@ -8,6 +8,16 @@ interface CreateTicketInput{
     deliveryDate:string;
 }
 
+// const extracted = extractAddress(content);
+// const matched = await matchAddress(extracted);
+// if(matched.status !== "matched"){
+// return {
+//     shippingFee:null,
+//     status:"needs_review"
+// }
+// }
+// const shipping = await getShippingFee({district:matched.oldDistrict, ward:matched.newWard})
+
 export async function createTicket(input:CreateTicketInput){
     const parsed = parsedTicketContent(input.content);
     const ticket ={

@@ -44,25 +44,60 @@ export async function getRawShippingRules(): Promise<RawShippingRow[]> {
     cells: row.map((cell) => String(cell ?? "")),
   }));
 }
+export async function getShippingRates(): Promise<ShippingRate[]> {
+  const rawRows = await getRawShippingRules();
 
-export function mapShippingRates(rows: string[][]): ShippingRate[] {
-  return rows.flatMap((row) => {
-    const [district, ward, fee] = row;
-    const parsedFee = Number(String(fee ?? "").replace(/[^\d]/g, ""));
-    if (
-      !district?.trim() ||
-      !ward?.trim() ||
-      !fee?.trim() ||
-      !Number.isFinite(parsedFee)
-    ) {
-      return [];
-    }
-    return [
-      {
-        district: district.trim(),
-        ward: ward.trim(),
-        fee: parsedFee,
-      },
-    ];
-  });
+  return mapShippingRates(rawRows);
 }
+export function mapShippingRates(
+  rows: RawShippingRow[],
+): ShippingRate[] {
+  const rates: ShippingRate[] = [];
+
+  for (const row of rows) {
+    const district = row.cells[5]?.trim() ?? "";
+    const ward = row.cells[6]?.trim() ?? "";
+    const feeText = row.cells[7]?.trim() ?? "";
+
+    if (!district || !ward || !feeText) {
+      continue;
+    }
+
+    const fee = Number(feeText.replace(/[^\d]/g, ""));
+
+    if (!Number.isFinite(fee) || fee <= 0) {
+      continue;
+    }
+
+    rates.push({
+      district,
+      ward,
+      fee,
+    });
+  }
+
+  return rates;
+}
+
+// export function mapShippingRates(rows: string[][]): ShippingRate[] {
+//   const rates :ShippingRate[] =[];
+//   return rows.flatMap((row) => {
+//     const [district, ward, fee] = row;
+//     const parsedFee = Number(String(fee ?? "").replace(/[^\d]/g, ""));
+//     if (
+//       !district?.trim() ||
+//       !ward?.trim() ||
+//       !fee?.trim() ||
+//       !Number.isFinite(parsedFee)
+//     ) {
+//       return [];
+//     }
+//     return [
+//       {
+//         district: district.trim(),
+//         ward: ward.trim(),
+//         fee: parsedFee,
+//       },
+//     ];
+//   });
+// }

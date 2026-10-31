@@ -1,73 +1,99 @@
 export interface ParsedTicket {
   shippingFee: number | null;
-  codAmount: number | null;
+  codAmount: string | null;
   transportFee: number | null;
   otherFee: number | null;
 }
 
+const MONEY = String.raw`(\d[\d.,]*(?:\s*(?:k|nghìn|ngàn|triệu|tr|trịu|đ|vnd))?)`;
+
 function parseMoney(value: string): number | null {
   const raw = value.trim().toLowerCase();
-  const match = raw.match(/^(\d[\d.,\s]*)(k|nghìn|ngàn|triệu|tr)?$/i);
+
+  const match = raw.match(
+    /^(\d[\d.,]*)(?:\s*(k|nghìn|ngàn|triệu|tr|trịu|đ|vnd))?$/i,
+  );
+
   if (!match) return null;
 
-  const amount = match[1].replace(/\s/g, "");
+  const amount = match[1];
   const unit = match[2]?.toLowerCase();
+
   let number: number;
 
-  if (unit === "k" || unit === "nghìn" || unit === "ngàn") {
+  if (["k", "nghìn", "ngàn"].includes(unit ?? "")) {
     number = Number(amount.replace(",", ".")) * 1000;
-  } else if (unit === "triệu" || unit === "tr" || unit === "trịu") {
+  } else if (["triệu", "tr", "trịu"].includes(unit ?? "")) {
     number = Number(amount.replace(",", ".")) * 1_000_000;
   } else if (/^\d{1,3}([.,]\d{3})+$/.test(amount)) {
     number = Number(amount.replace(/[.,]/g, ""));
   } else {
-    number = Number(amount);
-    if (number < 1000) number *= 1000;
+    number = Number(amount.replace(",", "."));
+
+    if (!["đ", "vnd"].includes(unit ?? "") && number < 1000) {
+      number *= 1000;
+    }
   }
 
   return Number.isFinite(number) ? Math.round(number) : null;
 }
 
-function exactAmount(content: string, regex: RegExp): number | null {
+function extractAmount(
+  content: string,
+  regex: RegExp,
+): number | null {
   const match = content.match(regex);
+
   if (!match) return null;
+
   return parseMoney(match[1]);
 }
 
-const MONEY = String.raw`(\d[\d.,]*(?:\s*(?:k|nghìn|ngàn|triệu|tr|trịu))?)`;
+
+export function extractCodAmount(content: string): string | null {
+  const regex =
+    /(?<![\p{L}\p{N}])(thu\s+khách|ck|công\s+nợ|tiền\s+cod|cod)\s*[:：]?\s*(\d+(?:[.,]\d+)*(?:\s*(?:k|nghìn|ngàn|triệu|tr|đ|vnd))?)(?![\p{L}\p{N}])/iu;
+
+  const match = content.match(regex);
+
+  if (!match) return null;
+
+  const paymentType = match[1].replace(/\s+/g, " ").trim();
+  const amount = match[2].trim();
+
+  return `${paymentType} ${amount}`;
+}
 
 export function parsedTicketContent(content: string): ParsedTicket {
-  const normalized = content.normalize("NFC").replace(/\s+/g, " ").trim();
+  const normalized = content
+    .normalize("NFC")
+    .replace(/\s+/g, " ")
+    .trim();
 
   return {
-    shippingFee: exactAmount(
+    shippingFee: extractAmount(
       normalized,
       new RegExp(String.raw`\bship\s*:?\s*` + MONEY, "i"),
+    ),
 
-    ),
-    codAmount:exactAmount(
-        normalized,
-        new RegExp(
-        String.raw`(?:thu\s+khách|tiền\s+cod|\bcod)\s*:?\s*` +
+    codAmount: extractCodAmount(normalized),
+
+    transportFee: extractAmount(
+      normalized,
+      new RegExp(
+        String.raw`(?:phí\s+chành|tiền\s+chành|cước\s+chành)\s*[:：]?\s*` +
           MONEY,
         "i",
       ),
     ),
-    transportFee:exactAmount(
-        normalized,
-       new RegExp(
-        String.raw`(?:phí\s+chành|tiền\s+chành|phí\s+nhà\s+xe)\s*:?\s*` +
+
+    otherFee: extractAmount(
+      normalized,
+      new RegExp(
+        String.raw`(?:phí\s+khác|chi\s+phí\s+khác)\s*[:：]?\s*` +
           MONEY,
         "i",
       ),
     ),
-    otherFee:exactAmount(
-        normalized,
-         new RegExp(
-        String.raw`(?:phí\s+khác|chi\s+phí\s+khác)\s*:?\s*` +
-          MONEY,
-        "i",
-      ),
-    )
   };
 }

@@ -132,9 +132,6 @@ export function matchAddress(
         });
       }
     }
-
-    // Chuyển đổi partial không đủ căn cứ
-    // để tự xác nhận địa chỉ.
     if (
       oldMatches.some(
         (item) => item.mappingType === "partial",

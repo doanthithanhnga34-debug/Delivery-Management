@@ -36,7 +36,6 @@ export function BottomNav() {
     };
 
     const handleFocusOut = () => {
-      // Chạy sau khi trình duyệt cập nhật phần tử đang focus.
       requestAnimationFrame(updateFocus);
     };
 
@@ -72,7 +71,7 @@ export function BottomNav() {
                   : "text-gray-500"
               }`}
             >
-              <Icon size={22} />
+              <Icon size={24} />
               <span>{label}</span>
             </Link>
           );

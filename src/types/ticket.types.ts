@@ -1,5 +1,6 @@
 export interface Ticket {
   id: string;
+  shipperId: string;
   shipperName: string;
   deliveryDate: string;
   shippingFee: number | null;
@@ -13,6 +14,14 @@ export interface Ticket {
 export interface CreateTicketInput {
   shipperName: string;
   content: string;
+  shippingFee: number;
+  deliveryDate: string;
+}
+
+export interface SaveTicketInput {
+  shipperName: string;
+  content: string;
+  shippingFee: number;
 }
 export type TicketHistoryProps = {
   tickets?: Ticket[];

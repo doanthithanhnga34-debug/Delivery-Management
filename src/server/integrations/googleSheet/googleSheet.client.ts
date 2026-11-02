@@ -5,7 +5,7 @@ import { google } from "googleapis";
 export function createGoogleSheetsClient() {
   const auth = new google.auth.GoogleAuth({
     scopes: [
-      "https://www.googleapis.com/auth/spreadsheets.readonly",
+      "https://www.googleapis.com/auth/spreadsheets",
     ],
   });
 

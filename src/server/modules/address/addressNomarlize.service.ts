@@ -13,16 +13,17 @@ export interface ResolvedAddress {
   newWard: string;
   newAddress: string;
 }
-
-export function normalizeText(value: string): string {
+function removeAccents(value: string): string {
   return value
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/gi, "d")
-    .toLowerCase()
-    .replace(/[.,;:()]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+    .replace(/đ/gi, "d");
+}
+function normalizeText(value: string): string {
+  return removeAccents(value).toLowerCase().replace(/\s+/g, " ").trim();
+}
+function normalizeNumber(value: string): string {
+  return String(Number(value));
 }
 
 function capitalizeWords(value: string): string {
@@ -31,93 +32,105 @@ function capitalizeWords(value: string): string {
     .replace(/(^|\s)\p{L}/gu, (char) => char.toUpperCase());
 }
 
-function extractDistrict(text: string): string | null {
-  const numeric = text.match(
-    /\b(?:quận|q\.?)\s*0*(\d{1,2})\b/iu,
-  );
+function extractDistrict(address: string): string | null {
+  const text = normalizeText(address);
 
-  if (numeric) {
-    return `Quận ${Number(numeric[1])}`;
+  const districtMatch = text.match(/(?:^|[\s,;,])(?:quan|q)\.?\s*(\d{1,2})\b/);
+
+  if (districtMatch) {
+    return `Quận ${normalizeNumber(districtMatch[1])}`;
   }
+  const segments = text.split(/[,;\n]/);
 
-  // Các quận có tên
-  const namedDistricts = [
-    "Bình Thạnh",
-    "Bình Tân",
-    "Tân Bình",
-    "Tân Phú",
-    "Phú Nhuận",
-    "Gò Vấp",
-    "Thủ Đức",
-  ];
+  for (const segment of segments) {
+    const match = segment
+      .trim()
+      .match(/^(quan|huyen|thi xa|thanh pho)\s+(.+)$/);
 
-  const normalized = normalizeText(text);
+    if (!match) continue;
 
-  for (const district of namedDistricts) {
-    const key = normalizeText(district);
+    const type = match[1];
+    const name = match[2].trim();
 
-    const withPrefix = new RegExp(
-      `\\b(?:quan|q)\\s+${key}\\b`,
-      "i",
-    );
-
-    if (withPrefix.test(normalized)) {
-      return district;
-    }
+    if (type === "quan") return `Quận ${name}`;
+    if (type === "huyen") return `Huyện ${name}`;
+    if (type === "thi xa") return `Thị xã ${name}`;
+    return `Thành phố ${name}`;
   }
 
   return null;
 }
-function extractWard(text: string): {
-  ward: string | null;
-  isNumbered: boolean;
-} {
-  const numeric = text.match(
-    /\b(?:phường|p\.?)\s*0*(\d{1,2})\b/iu,
+
+function extractWard(address: string): string | null {
+  const text = normalizeText(address);
+
+  // Nhận diện P6, P.6, P 6, Phường 6
+  const numberedMatch = text.match(
+    /(?:^|[\s,;,])(?:phuong\s*|p\.?\s*|f\s*)(\d{1,3})\b/i,
   );
 
-  if (numeric) {
-    return {
-      ward: `Phường ${Number(numeric[1])}`,
-      isNumbered: true,
-    };
+  if (numberedMatch) {
+    return `Phường ${Number(numberedMatch[1])}`;
+  }
+  const startPattern =
+  /(?:^|[\s,;,])(phuong\s+|p(?:\.\s*|\s+)|xa\s+|x(?:\.\s*|\s+)|thi tran\s+|tt(?:\.\s*|\s+))/g;
+
+  for (const match of text.matchAll(startPattern)) {
+    // const rawType = match.groups?.type?.trim();
+  const rawType = match[1]?.trim();
+
+
+    if (!rawType) continue;
+
+    const start = (match.index ?? 0) + match[0].length;
+    const remainder = text.slice(start);
+
+    const boundary =
+      /[,;\n]|\s+(?:(?:q|quan)\.?\s*\d+|huyen\s+|tp\.?\s*|thanh pho\s+|tinh\s+)/;
+
+    const boundaryMatch = boundary.exec(remainder);
+
+    const name = (
+      boundaryMatch ? remainder.slice(0, boundaryMatch.index) : remainder
+    ).trim();
+
+    if (!name) continue;
+
+    const normalizedName = /^\d+$/.test(name) ? String(Number(name)) : name;
+
+    if (/^(xa|x)(?:\.|\s|$)/.test(rawType)) {
+      return `Xã ${normalizedName}`;
+    }
+
+    if (/^(thi tran|tt)(?:\.|\s|$)/.test(rawType)) {
+      return `Thị trấn ${normalizedName}`;
+    }
+
+    return `Phường ${normalizedName}`;
   }
 
-  const named = text.match(
-    /\b(?:phường|xã)\s+([\p{L}][\p{L}\s-]{1,45}?)(?=\s*[,;.]|\s+(?:quận|huyện|thành phố|tỉnh|tp\.?)\b|$)/iu,
-  );
-
-  if (named) {
-    return {
-      ward: capitalizeWords(named[1].trim()),
-      isNumbered: false,
-    };
-  }
-
-  return {
-    ward: null,
-    isNumbered: false,
-  };
+  return null;
 }
 
-export function normalizeAddress(
-  address: string,
-): NormalizedAddress {
-  const originalText = address.normalize("NFC").trim();
+export function normalizeAddress(address: string): NormalizedAddress {
+  const originalText = address.trim();
+  const normalizedText = normalizeText(originalText);
 
   const district = extractDistrict(originalText);
-  const wardResult = extractWard(originalText);
+  const ward = extractWard(originalText);
 
-  const addressSystem =
-    wardResult.isNumbered && district
-      ? "old"
-      : "unknown";
+  const isNumberedWard = ward !== null && /^Phường \d+$/i.test(ward);
 
   return {
     originalText,
-    normalizedText: normalizeText(originalText),
+    normalizedText,
     district,
-    ward: wardResult.ward,
-    addressSystem,
+    ward,
+    addressSystem:
+      district && ward
+        ? "old"
+        : !district && ward && !isNumberedWard
+          ? "new"
+          : "unknown",
   };
 }

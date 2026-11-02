@@ -44,7 +44,7 @@ export function TicketDetailDrawer({
                 <UserRound className="size-4 text-muted-foreground" />
                 <div>
                   <p className="text-xs text-muted-foreground">Tên shipper</p>
-                  <p className="text-sm font-semibold">{ticket.name}</p>
+                  <p className="text-sm font-semibold">{ticket.shipperName}</p>
                 </div>
               </div>
 

@@ -1,3 +1,4 @@
+import { createTicket } from "@/server/modules/tickets/ticket.service";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -8,12 +9,59 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const body = await request.json();
+  try {
+    const body: unknown = await request.json();
 
-  console.log("Received:", body);
+    if (
+      !body ||
+      typeof body !== "object" ||
+      !("shipperName" in body) ||
+      !("content" in body) ||
+      !("shippingFee" in body) ||
+      typeof body.shipperName !== "string" ||
+      typeof body.content !== "string" ||
+      typeof body.shippingFee !== "number"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Dữ liệu không hợp lệ",
+        },
+        { status: 400 },
+      );
+    }
 
-  return NextResponse.json({
-    success: true,
-    data: body,
-  });
+    console.log("[TICKET_REQUEST]", {
+      shipperName: body.shipperName,
+      shippingFee: body.shippingFee,
+    });
+
+    const result = await createTicket({
+      shipperName: body.shipperName,
+      content: body.content,
+      shippingFee: body.shippingFee,
+      deliveryDate: new Date().toISOString(),
+    });
+
+    console.log("[TICKET_SAVED]", result);
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Đã lưu phiếu vào Google Sheets",
+        data: result,
+      },
+      { status: 201 },
+    );
+  } catch (error) {
+    console.error("[CREATE_TICKET_ERROR]", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Không thể lưu phiếu vào Google Sheets",
+      },
+      { status: 500 },
+    );
+  }
 }

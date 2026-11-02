@@ -1,35 +1,102 @@
 "use client";
 
-import { SubmitEvent, useState } from "react";
+import { SubmitEvent, useEffect, useState, useSyncExternalStore } from "react";
 import { Plus, UserRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "@/components/ui/toast";
+
+const SHIPPER_STORAGE_KEY = "delivery_shipper_name";
+
+function subscribeToStorage(callback: () => void) {
+  window.addEventListener("storage", callback);
+
+  return () => {
+    window.removeEventListener("storage", callback);
+  };
+}
+
+function getShipperSnapshot() {
+  return localStorage.getItem(SHIPPER_STORAGE_KEY) ?? "";
+}
+
+function getServerSnapshot() {
+  return "";
+}
 
 export function TicketForm() {
-  const [shipperName, setShipperName] = useState("");
+  const savedShipperName = useSyncExternalStore(
+    subscribeToStorage,
+    getShipperSnapshot,
+    getServerSnapshot,
+  );
+
+  const [editedShipperName, setEditedShipperName] = useState<string | null>(
+    null,
+  );
+
+  const shipperName = editedShipperName ?? savedShipperName;
   const [content, setContent] = useState("");
+  const [feeShip, setFeeShip] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+
+  const quickFees = [
+    { label: "20.000", value: "20000" },
+    { label: "25.000", value: "25000" },
+    { label: "30.000", value: "30000" },
+    { label: "35.000", value: "35000" },
+    { label: "40.000", value: "40000" },
+    { label: "50.000", value: "50000" },
+    { label: "Freeship", value: "0" },
+  ];
+
+  function handleFeeChange(value: string) {
+    const digits = value.replace(/\D/g, "");
+    setFeeShip(digits);
+  }
 
   async function handleSubmit(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
+
+    if (isSubmitting) return;
+
     const name = shipperName.trim();
     const ticketContent = content.trim();
-    if (!name || !ticketContent || isSubmitting) return;
+
+    setSubmitError(null);
+    setSubmitSuccess(false);
+
+    if (!name || !ticketContent) {
+      setSubmitError("Vui lòng nhập đầy đủ thông tin.");
+      return;
+    }
+
+    if (feeShip === "") {
+      setSubmitError("Vui lòng nhập phí ship.");
+      return;
+    }
+
+    const shippingFee = Number(feeShip);
+
+    if (!Number.isSafeInteger(shippingFee) || shippingFee < 0) {
+      setSubmitError("Phí ship không hợp lệ.");
+      return;
+    }
 
     setIsSubmitting(true);
+
     try {
       const response = await fetch("/api/tickets", {
         method: "POST",
@@ -39,15 +106,32 @@ export function TicketForm() {
         body: JSON.stringify({
           shipperName: name,
           content: ticketContent,
+          shippingFee,
         }),
       });
+
       const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.message || "Gửi phiếu thất bại");
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "Tạo phiếu thất bại");
       }
-      console.log("Server response", result);
+      localStorage.setItem(SHIPPER_STORAGE_KEY, name);
+      setEditedShipperName(name);
+      setContent("");
+      setFeeShip("");
+
+      toast.add({
+        type: "success",
+        description: `Tạo phiếu thành công`,
+      });
     } catch (error) {
-      console.error("Submit ticket error:", error);
+      toast.add({
+        type: "error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Không thể kết nối đến máy chủ.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -60,7 +144,7 @@ export function TicketForm() {
           Tạo phiếu
         </h1>
         <p className="text-xs text-[#89978F]">
-          Ghi lại đơn hàng, sẵn sàng cho chuyến giao.
+          Ghi lại phiếu hàng, sẵn sàng cho chuyến giao.
         </p>
       </div>
 
@@ -102,7 +186,7 @@ export function TicketForm() {
                   autoComplete="name"
                   required
                   value={shipperName}
-                  onChange={(e) => setShipperName(e.target.value)}
+                  onChange={(e) => setEditedShipperName(e.target.value)}
                   className="h-full min-w-0 text-[13px] text-[#263F34] "
                 />
               </InputGroup>
@@ -130,25 +214,67 @@ export function TicketForm() {
                 required
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                className="min-h-[140px] w-full resize-y rounded-xl 
+                className="min-h-[110px] w-full resize-y rounded-xl 
                 border-[#E1E9E4] bg-white px-3 py-3 text-[13px] 
-                leading-6 text-[#263F34] shadow-none 
-                focus-visible:border-0 focus-visible:ring-0"
+                leading-6 text-[#263F34] shadow 
+                focus-visible:border-1 focus-visible:ring-1"
               />
+            </Field>
 
-              <FieldDescription className="w-full text-left text-[11px] leading-relaxed text-[#8A998F]">
-                Ghi mặt hàng, địa chỉ và số tiền thu hộ (nếu có).
-              </FieldDescription>
+            <Field>
+              <FieldLabel htmlFor="input-field-fee">Phí ship</FieldLabel>
+              <Input
+                id="input-field-fee"
+                type="text"
+                placeholder="Nhập phí ship"
+                value={feeShip ? Number(feeShip).toLocaleString("vi-VN") : ""}
+                onChange={(e) => handleFeeChange(e.target.value)}
+                className="w-full resize-y rounded-xl 
+                border-[#E1E9E4] bg-white px-3 py-3 text-[13px] 
+                leading-6 text-[#263F34] shadow 
+                focus-visible:border-1 focus-visible:ring-1"
+              />
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <span className="text-[11px] text-slate-400 mr-1">Gợi ý:</span>
+                {quickFees.map((item) => {
+                  const isSelected = feeShip === item.value;
+                  return (
+                    <Badge
+                      key={item.value}
+                      variant={isSelected ? "default" : "outline"}
+                      onClick={() => setFeeShip(item.value)}
+                      className={`cursor-pointer px-2.5 py-1 text-[11px] font-medium transition-all rounded-xl ${
+                        isSelected
+                          ? "bg-red-600 text-white hover:bg-red-700 border-transparent shadow-sm"
+                          : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-red-50 hover:text-red-700 hover:border-red-50"
+                      }`}
+                    >
+                      {item.label}
+                    </Badge>
+                  );
+                })}
+              </div>
             </Field>
 
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="h-11 w-full rounded-xl bg-[#d92d45] text-[13px] font-semibold text-white shadow-none hover:bg-[#116E4A]"
+              className="h-[48px] w-full rounded-xl bg-[#d92d45] text-[13px] font-semibold text-white shadow-none hover:from-red-700 hover:to-rose-700"
             >
               <Plus className="size-4" strokeWidth={2} />
               {isSubmitting ? "Đang xử lý" : "Tạo phiếu"}
             </Button>
+            {submitError && (
+              <p role="alert" className="text-sm text-red-600">
+                {submitError}
+              </p>
+            )}
+
+            {submitSuccess && (
+              <p role="status" className="text-sm text-green-700">
+                Tạo phiếu thành công.
+              </p>
+            )}
           </FieldGroup>
         </CardContent>
       </Card>

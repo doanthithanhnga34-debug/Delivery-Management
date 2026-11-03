@@ -2,7 +2,6 @@ export interface Ticket {
   id: string;
   shipperId: string;
   shipperName: string;
-  deliveryDate: string;
   shippingFee: number | null;
   codAmount: string | null;
   transportFee: number;

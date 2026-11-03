@@ -10,14 +10,27 @@ const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 export const metadata: Metadata = {
   title: "Teokbokki Ship",
   description: "",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "TeokbokkiShip",
+  },
 };
+// export const viewport: Viewport = {
+//   colorScheme: 'light dark',
+//   themeColor: [
+//     { media: '(prefers-color-scheme: light)', color: 'white' },
+//     { media: '(prefers-color-scheme: dark)', color: 'black' },
+//   ],
+// }
+
 export const viewport: Viewport = {
-  colorScheme: 'light dark',
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: 'white' },
-    { media: '(prefers-color-scheme: dark)', color: 'black' },
-  ],
-}
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#E92332",
+};
 export default function RootLayout({
   children,
 }: Readonly<{

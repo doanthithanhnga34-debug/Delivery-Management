@@ -1,5 +1,20 @@
 
 
-.input-form{
+.input-custom {
+  width: 100%;
+  border-radius: 1rem;
+  border: 1px solid #eae5ee;
+  background-color: #ffffff;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  font-size: 13px;
+  color: #263f34;
+  box-shadow: none;
+  outline: none;
+}
 
+.input-custom:focus-visible {
+  border-color: #e92332;
+  outline: none;
+  box-shadow: 0 0 0 2px rgb(233 35 50 / 10%);
 }

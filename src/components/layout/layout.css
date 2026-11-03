@@ -1,0 +1,84 @@
+.glassmorphism {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.header__btn-glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.header__btn-active {
+  background-color: #ffffff;
+  color: var(--primary);
+}
+
+
+/* Bottom nav*/
+.bottom-nav {
+  display: flex;
+  position: relative;
+  gap: 0;
+  height: 48px;
+  padding: 4px;
+
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 25px;
+
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.bottom-nav__slider {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+
+   background: var(--color-bg);
+  border-radius: 25px;
+
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.15);
+
+  transition: transform 0.4s
+    cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  z-index: 0;
+}
+
+.bottom-nav__item {
+  position: relative;
+  z-index: 1;
+
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 25px;
+  white-space: nowrap;
+
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 600;
+
+  transition: color 0.3s ease;
+}
+
+/* .bottom-nav__item:hover {
+  color: #fff;
+} */
+
+.bottom-nav__item--active {
+  color: #fff;
+}

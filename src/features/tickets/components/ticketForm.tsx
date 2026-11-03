@@ -1,7 +1,7 @@
 "use client";
 
 import { SubmitEvent, useEffect, useState, useSyncExternalStore } from "react";
-import { Plus, UserRound } from "lucide-react";
+import { ClipboardPenLine, Plus, Send, SendHorizontal, UserRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -138,146 +138,156 @@ export function TicketForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-[23px] font-bold tracking-tight text-[#17352B]">
-          Tạo phiếu
-        </h1>
-        <p className="text-xs text-[#89978F]">
-          Ghi lại phiếu hàng, sẵn sàng cho chuyến giao.
-        </p>
+    <div className="">
+      {/* flex w-full flex-1 flex-col */}
+      <form onSubmit={handleSubmit} className="flex w-full flex-1 flex-col">
+        <Card
+          className="mt-4 overflow-hidden rounded-[28px] border-0 bg-white py-0 shadow-none ring-0"
+        >
+          <CardContent className="p-5 sm:p-6">
+             <div className="mb-6 flex items-center gap-3">
+      <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#FFF0F1]">
+        <ClipboardPenLine
+          size={22}
+          strokeWidth={1.8}
+          className="text-[#E92332]"
+        />
       </div>
 
-      <Card className="gap-0 rounded-2xl border-[#E1E9E4] bg-white py-0 shadow-none">
-        <CardContent className="p-4">
-          <FieldGroup className="gap-5">
-            <Field
-              orientation="vertical"
-              className="w-full items-stretch gap-2"
-            >
-              <FieldLabel
-                htmlFor="shipper-name"
-                className="!flex w-full flex-row items-center justify-start gap-1 text-left text-xs font-semibold text-[#264237]"
-              >
-                <span>Tên shipper</span>
-                <span aria-hidden="true" className="text-primary">
-                  *
-                </span>
-              </FieldLabel>
+      <div className="min-w-0">
+        <h2 className="text-[15px] font-bold text-[#282036]">
+          Thông tin giao hàng
+        </h2>
 
-              <InputGroup
-                className=" h-11 w-full rounded-xl bg-white shadow-none
-                    !border-0 !ring-0 !outline-none
-                    focus-within:!border-0
-                    focus-within:!ring-0
-                    focus-within:!outline-none
-                    has-[[data-slot=input-group-control]:focus-visible]:!border-0
-                    has-[[data-slot=input-group-control]:focus-visible]:!ring-0"
+        <p className="mt-0.5 text-[11px] text-[#9992A3]">
+          Điền thông tin và gửi trong vài giây.
+        </p>
+      </div>
+    </div>
+            <FieldGroup className="gap-5">
+              <Field
+                orientation="vertical"
+                className="w-full items-stretch gap-2"
               >
-                <InputGroupAddon align="inline-start">
-                  <UserRound className="size-4 text-[#71877A]" />
-                </InputGroupAddon>
+                <FieldLabel
+                  htmlFor="shipper-name"
+                  className="!flex w-full flex-row items-center justify-start gap-1 text-left text-xs font-semibold text-[#264237]"
+                >
+                  <span>Tên shipper</span>
+                  <span aria-hidden="true" className="text-primary">
+                    *
+                  </span>
+                </FieldLabel>
 
-                <InputGroupInput
-                  id="shipper-name"
-                  name="shipperName"
-                  type="text"
-                  placeholder="Nhập tên"
-                  autoComplete="name"
+                <InputGroup className=" h-12 input-custom">
+                  <InputGroupAddon align="inline-start">
+                    <UserRound className="size-4 text-[#71877A]" />
+                  </InputGroupAddon>
+
+                  <InputGroupInput
+                    id="shipper-name"
+                    name="shipperName"
+                    type="text"
+                    placeholder="Nhập tên"
+                    autoComplete="name"
+                    required
+                    value={shipperName}
+                    onChange={(e) => setEditedShipperName(e.target.value)}
+                    className="h-full min-w-0 text-[13px] text-[#263F34] "
+                  />
+                </InputGroup>
+              </Field>
+
+              <Field
+                orientation="vertical"
+                className="w-full items-stretch gap-2"
+              >
+                <FieldLabel
+                  htmlFor="ticket-content"
+                  className="!flex w-full flex-row items-center justify-start gap-1 text-left text-xs font-semibold text-[#264237]"
+                >
+                  <span>Nội dung đơn hàng</span>
+                  <span aria-hidden="true" className="text-primary">
+                    *
+                  </span>
+                </FieldLabel>
+
+                <Textarea
+                  id="ticket-content"
+                  name="content"
+                  placeholder={"Nội dung"}
+                  rows={6}
                   required
-                  value={shipperName}
-                  onChange={(e) => setEditedShipperName(e.target.value)}
-                  className="h-full min-w-0 text-[13px] text-[#263F34] "
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  className="min-h-[120px] resize-y py-3 
+                leading-6 input-custom"
                 />
-              </InputGroup>
-            </Field>
+              </Field>
 
-            <Field
-              orientation="vertical"
-              className="w-full items-stretch gap-2"
-            >
-              <FieldLabel
-                htmlFor="ticket-content"
-                className="!flex w-full flex-row items-center justify-start gap-1 text-left text-xs font-semibold text-[#264237]"
-              >
-                <span>Nội dung đơn hàng</span>
-                <span aria-hidden="true" className="text-primary">
-                  *
-                </span>
-              </FieldLabel>
+              <Field>
+                <FieldLabel htmlFor="input-field-fee">Phí ship</FieldLabel>
+                <Input
+                  id="input-field-fee"
+                  type="text"
+                  placeholder="Nhập phí ship"
+                  value={feeShip ? Number(feeShip).toLocaleString("vi-VN") : ""}
+                  onChange={(e) => handleFeeChange(e.target.value)}
+                  className="input-custom h-12"
+                />
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[11px] text-slate-400 mr-1">
+                    Gợi ý:
+                  </span>
+                  {quickFees.map((item) => {
+                    const isSelected = feeShip === item.value;
+                    return (
+                      <Badge
+                        key={item.value}
+                        variant={isSelected ? "default" : "outline"}
+                        onClick={() => setFeeShip(item.value)}
+                        className={`cursor-pointer px-2.5 py-1 text-[11px] font-medium transition-all rounded-xl ${
+                          isSelected
+                            ? "bg-red-600 text-white hover:bg-red-700 border-transparent shadow-sm"
+                            : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-red-50 hover:text-red-700 hover:border-red-50"
+                        }`}
+                      >
+                        {item.label}
+                      </Badge>
+                    );
+                  })}
+                </div>
+              </Field>
 
-              <Textarea
-                id="ticket-content"
-                name="content"
-                placeholder={"Nội dung"}
-                rows={6}
-                required
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="min-h-[110px] w-full resize-y rounded-xl 
-                border-[#E1E9E4] bg-white px-3 py-3 text-[13px] 
-                leading-6 text-[#263F34] shadow 
-                focus-visible:border-1 focus-visible:ring-1"
-              />
-            </Field>
+              {submitError && (
+                <p role="alert" className="text-sm text-red-600">
+                  {submitError}
+                </p>
+              )}
 
-            <Field>
-              <FieldLabel htmlFor="input-field-fee">Phí ship</FieldLabel>
-              <Input
-                id="input-field-fee"
-                type="text"
-                placeholder="Nhập phí ship"
-                value={feeShip ? Number(feeShip).toLocaleString("vi-VN") : ""}
-                onChange={(e) => handleFeeChange(e.target.value)}
-                className="w-full resize-y rounded-xl 
-                border-[#E1E9E4] bg-white px-3 py-3 text-[13px] 
-                leading-6 text-[#263F34] shadow 
-                focus-visible:border-1 focus-visible:ring-1"
-              />
-              <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                <span className="text-[11px] text-slate-400 mr-1">Gợi ý:</span>
-                {quickFees.map((item) => {
-                  const isSelected = feeShip === item.value;
-                  return (
-                    <Badge
-                      key={item.value}
-                      variant={isSelected ? "default" : "outline"}
-                      onClick={() => setFeeShip(item.value)}
-                      className={`cursor-pointer px-2.5 py-1 text-[11px] font-medium transition-all rounded-xl ${
-                        isSelected
-                          ? "bg-red-600 text-white hover:bg-red-700 border-transparent shadow-sm"
-                          : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-red-50 hover:text-red-700 hover:border-red-50"
-                      }`}
-                    >
-                      {item.label}
-                    </Badge>
-                  );
-                })}
-              </div>
-            </Field>
+              {submitSuccess && (
+                <p role="status" className="text-sm text-green-700">
+                  Tạo phiếu thành công.
+                </p>
+              )}
+            </FieldGroup>
+          </CardContent>
+        </Card>
+        <div className="mt-auto pt-8">
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="h-12 w-full rounded-xl bg-[#E92332] text-white hover:bg-[#D91D2C]"
+          >
+            {isSubmitting ? "Đang xử lý..." : "Gửi phiếu"}
+            <Send className="size-4" strokeWidth={2} />
+          </Button>
 
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="h-[48px] w-full rounded-xl bg-[#d92d45] text-[13px] font-semibold text-white shadow-none hover:from-red-700 hover:to-rose-700"
-            >
-              <Plus className="size-4" strokeWidth={2} />
-              {isSubmitting ? "Đang xử lý" : "Tạo phiếu"}
-            </Button>
-            {submitError && (
-              <p role="alert" className="text-sm text-red-600">
-                {submitError}
-              </p>
-            )}
-
-            {submitSuccess && (
-              <p role="status" className="text-sm text-green-700">
-                Tạo phiếu thành công.
-              </p>
-            )}
-          </FieldGroup>
-        </CardContent>
-      </Card>
-    </form>
+          <p className="mt-3 text-center text-[11px] text-[#9B9BAD]">
+            Phiếu được lưu tự động vào lịch sử.
+          </p>
+        </div>
+      </form>
+    </div>
   );
 }

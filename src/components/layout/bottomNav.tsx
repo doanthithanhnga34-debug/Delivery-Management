@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FilePlus2, History } from "lucide-react";
 
-const navigation = [
+const navItems = [
   {
     label: "Tạo phiếu",
     href: "/create",
@@ -19,60 +19,39 @@ const navigation = [
 ];
 
 export function BottomNav() {
-  const pathname = usePathname();
-  const [isTyping, setIsTyping] = useState(false);
+   const pathname = usePathname();
 
-  useEffect(() => {
-    const isEditable = (element: Element | null) =>
-      element instanceof HTMLElement &&
-      (element.matches("input, textarea, select") ||
-        element.isContentEditable);
-
-    const updateFocus = () => {
-      // const isMobile = window.matchMedia("(pointer: coarse)").matches;
-      const isMobile = window.matchMedia("(max-width: 768px)").matches;
-
-      setIsTyping(isMobile && isEditable(document.activeElement));
-    };
-
-    const handleFocusOut = () => {
-      requestAnimationFrame(updateFocus);
-    };
-
-    document.addEventListener("focusin", updateFocus);
-    document.addEventListener("focusout", handleFocusOut);
-
-    updateFocus();
-
-    return () => {
-      document.removeEventListener("focusin", updateFocus);
-      document.removeEventListener("focusout", handleFocusOut);
-    };
-  }, []);
-
-  if (isTyping) {
-    return null;
-  }
+  const activeIndex = navItems.findIndex(
+    (item) =>
+      pathname === item.href ||
+      pathname.startsWith(`${item.href}/`)
+  );
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)]">
-      <div className="mx-auto flex max-w-lg">
-        {navigation.map(({ label, href, icon: Icon }) => {
-          const active = pathname === href;
+
+    <nav className="fixed bottom-4 left-1/2 z-50 w-[calc(100%-32px)] max-w-[360px] -translate-x-1/2">
+      <div className="bottom-nav">
+        <div
+          className="bottom-nav__slider"
+          style={{
+            width: `calc((100% - 8px) / ${navItems.length})`,
+            transform: `translateX(${Math.max(activeIndex, 0) * 100}%)`,
+          }}
+        />
+
+        {navItems.map((item, index) => {
+          const isActive = pathname === item.href ||
+            pathname.startsWith(`${item.href}/`);
 
           return (
             <Link
-              key={href}
-              href={href}
-              aria-current={active ? "page" : undefined}
-              className={`flex flex-1 flex-col items-center gap-1 px-3 py-3 text-xs transition-colors ${
-                active
-                  ? "font-semibold text-red-600"
-                  : "text-gray-500"
+              key={item.href}
+              href={item.href}
+              className={`bottom-nav__item ${
+                isActive ? "bottom-nav__item--active" : ""
               }`}
             >
-              <Icon size={24} />
-              <span>{label}</span>
+              {item.label}
             </Link>
           );
         })}

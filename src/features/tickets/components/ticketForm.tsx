@@ -53,13 +53,13 @@ export function TicketForm() {
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const quickFees = [
-    { label: "20.000", value: "20000" },
-    { label: "25.000", value: "25000" },
-    { label: "30.000", value: "30000" },
-    { label: "35.000", value: "35000" },
-    { label: "40.000", value: "40000" },
-    { label: "50.000", value: "50000" },
-    { label: "Freeship", value: "0" },
+    { label: "20k", value: "20000" },
+    { label: "25k", value: "25000" },
+    { label: "30k", value: "30000" },
+    { label: "35k", value: "35000" },
+    { label: "40k", value: "40000" },
+    { label: "45k", value: "45000" },
+    { label: "50k", value: "50000" },
   ];
 
   function handleFeeChange(value: string) {
@@ -283,9 +283,9 @@ export function TicketForm() {
             <Send className="size-4" strokeWidth={2} />
           </Button>
 
-          <p className="mt-3 text-center text-[11px] text-[#9B9BAD]">
+          {/* <p className="mt-3 text-center text-[11px] text-[#9B9BAD]">
             Phiếu được lưu tự động vào lịch sử.
-          </p>
+          </p> */}
         </div>
       </form>
     </div>

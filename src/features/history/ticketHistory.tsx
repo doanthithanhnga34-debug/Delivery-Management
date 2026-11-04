@@ -70,7 +70,7 @@ const todayTickets = useMemo(() => {
     );
 }, [tickets, selectedDate]);
   return (
-    <div className="flex min-h-dvh flex-col bg-[#F7F9F7]">
+    <div className="flex min-h-dvh flex-col bg-white">
       <main className="mx-auto w-full max-w-md flex-1 space-y-6 px-4 pb-28 pt-8">
         <header className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight text-[#19342B]">

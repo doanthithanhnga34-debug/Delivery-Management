@@ -3,6 +3,7 @@ export interface ShipperSheetConfig {
   timestampColumn: number;
   contentColumn: number;
   shippingFeeColumn: number;
+  otherFeeColumn:number;
   totalColumns: number;
 }
 
@@ -15,6 +16,7 @@ export const shipperSheetConfigs: Record<
     timestampColumn: 0,
     contentColumn: 1,
     shippingFeeColumn: 4,
+    otherFeeColumn:5,
     totalColumns: 10,
   },
 
@@ -23,6 +25,7 @@ export const shipperSheetConfigs: Record<
     timestampColumn: 0,
     contentColumn: 1,
     shippingFeeColumn: 4,
+    otherFeeColumn:5,
     totalColumns: 12,
   },
 };

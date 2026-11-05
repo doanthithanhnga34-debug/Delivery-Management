@@ -1,3 +1,5 @@
+import { NumberField } from "@base-ui/react";
+
 export interface Ticket {
   id: string;
   shipperId: string;
@@ -21,6 +23,7 @@ export interface SaveTicketInput {
   shipperName: string;
   content: string;
   shippingFee: number;
+  otherFee:number;
 }
 export type TicketHistoryProps = {
   tickets?: Ticket[];
@@ -28,3 +31,32 @@ export type TicketHistoryProps = {
   onCreateReport?: (tickets: Ticket[]) => void;
 };
 
+export type DeliveryMethod = | "direct" | "bus_station"
+
+export interface BusStationInfo{
+  name:string;
+  stationAddress:string;
+}
+export interface InvoiceInfo{
+  companyName:string;
+  taxCode:string;
+  address:string;
+  email:string;
+  phone:string;
+}
+export interface OrderTicket{
+  id:string;
+  code:string;
+  shipperName:string;
+  customerName:string;
+  customerPhone:string;
+  deliveryAddress:string;
+  deliveryMethod:DeliveryMethod;
+  busStationInfo?:BusStationInfo;
+  packageContent:string;
+  shippingFee:number;
+  busStation:number;
+  codAmount:string;
+  invoiceInfo?:InvoiceInfo;
+  createdAt:string;
+}

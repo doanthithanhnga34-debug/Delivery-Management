@@ -14,7 +14,7 @@
 }
 
 .input-custom:focus-visible {
-  border-color: #e92332;
+  border-color: var(--primary);
   outline: none;
-  box-shadow: 0 0 0 2px rgb(233 35 50 / 10%);
+  box-shadow: 0 0 0 2px rgba(35, 170, 233, 0.1);
 }

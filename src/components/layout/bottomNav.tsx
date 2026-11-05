@@ -19,17 +19,21 @@ const navItems = [
 ];
 
 export function BottomNav() {
-   const pathname = usePathname();
+  const pathname = usePathname();
 
   const activeIndex = navItems.findIndex(
-    (item) =>
-      pathname === item.href ||
-      pathname.startsWith(`${item.href}/`)
+    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
   );
 
   return (
-
-    <nav className="fixed bottom-4 left-1/2 z-50 w-[calc(100%-32px)] max-w-[360px] -translate-x-1/2">
+    <nav
+  className="
+    relative z-20 mx-auto w-full max-w-lg shrink-0
+    bg-white
+    px-3 pt-2
+    pb-[calc(env(safe-area-inset-bottom,0px)+8px)]
+  "
+>
       <div className="bottom-nav">
         <div
           className="bottom-nav__slider"
@@ -40,8 +44,8 @@ export function BottomNav() {
         />
 
         {navItems.map((item, index) => {
-          const isActive = pathname === item.href ||
-            pathname.startsWith(`${item.href}/`);
+          const isActive =
+            pathname === item.href || pathname.startsWith(`${item.href}/`);
 
           return (
             <Link

@@ -12,3 +12,5 @@
 
 export type AdminView = 'rates'
 export type ShipperView = 'new' | 'history'
+
+export type ActiveTab = 'create' | 'history' | 'stats';

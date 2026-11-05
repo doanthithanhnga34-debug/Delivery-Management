@@ -1,20 +1,16 @@
 "use client";
 
 import { SubmitEvent, useEffect, useState, useSyncExternalStore } from "react";
-import { ClipboardPenLine, Plus, Send, SendHorizontal, UserRound } from "lucide-react";
+import { Bot, DollarSign, Send, SquareText, User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-} from "@/components/ui/input-group";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/toast";
+import { formatCurrency } from "@/utils/formatter";
 
 const SHIPPER_STORAGE_KEY = "delivery_shipper_name";
 
@@ -48,6 +44,7 @@ export function TicketForm() {
   const shipperName = editedShipperName ?? savedShipperName;
   const [content, setContent] = useState("");
   const [feeShip, setFeeShip] = useState("");
+  const [otherFee, setOtherFee] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
@@ -141,29 +138,27 @@ export function TicketForm() {
     <div className="">
       {/* flex w-full flex-1 flex-col */}
       <form onSubmit={handleSubmit} className="flex w-full flex-1 flex-col">
-        <Card
-          className="mt-4 overflow-hidden rounded-[28px] border-0 bg-white py-0 shadow-none ring-0"
-        >
+        <Card className="mt-4 overflow-hidden rounded-[24px] border-0 bg-white py-0 shadow-none ring-0">
           <CardContent className="p-5 sm:p-6">
-             <div className="mb-6 flex items-center gap-3">
-      <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#FFF0F1]">
-        <ClipboardPenLine
-          size={22}
-          strokeWidth={1.8}
-          className="text-[#E92332]"
-        />
-      </div>
+            {/* <div className="mb-6 flex items-center gap-3">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#FFF0F1]">
+                <ClipboardPenLine
+                  size={22}
+                  strokeWidth={1.8}
+                  className="text-[#E92332]"
+                />
+              </div>
 
-      <div className="min-w-0">
-        <h2 className="text-[15px] font-bold text-[#282036]">
-          Thông tin giao hàng
-        </h2>
+              <div className="min-w-0">
+                <h2 className="text-[15px] font-bold text-[#282036]">
+                  Thông tin giao hàng
+                </h2>
 
-        <p className="mt-0.5 text-[11px] text-[#9992A3]">
-          Điền thông tin và gửi trong vài giây.
-        </p>
-      </div>
-    </div>
+                <p className="mt-0.5 text-[11px] text-[#9992A3]">
+                  Điền thông tin và gửi trong vài giây.
+                </p>
+              </div>
+            </div> */}
             <FieldGroup className="gap-5">
               <Field
                 orientation="vertical"
@@ -173,29 +168,23 @@ export function TicketForm() {
                   htmlFor="shipper-name"
                   className="!flex w-full flex-row items-center justify-start gap-1 text-left text-xs font-semibold text-[#264237]"
                 >
+                  <User className="w-3.5 h-3.5 text-(--primary)" />
                   <span>Tên shipper</span>
                   <span aria-hidden="true" className="text-primary">
                     *
                   </span>
                 </FieldLabel>
-
-                <InputGroup className=" h-12 input-custom">
-                  <InputGroupAddon align="inline-start">
-                    <UserRound className="size-4 text-[#71877A]" />
-                  </InputGroupAddon>
-
-                  <InputGroupInput
-                    id="shipper-name"
-                    name="shipperName"
-                    type="text"
-                    placeholder="Nhập tên"
-                    autoComplete="name"
-                    required
-                    value={shipperName}
-                    onChange={(e) => setEditedShipperName(e.target.value)}
-                    className="h-full min-w-0 text-[13px] text-[#263F34] "
-                  />
-                </InputGroup>
+                <Input
+                  id="shipper-name"
+                  name="shipperName"
+                  type="text"
+                  placeholder="Nhập tên"
+                  autoComplete="name"
+                  required
+                  value={shipperName}
+                  onChange={(e) => setEditedShipperName(e.target.value)}
+                  className="h-full min-w-0 text-[13px] text-[#263F34] input-custom h-11 "
+                />
               </Field>
 
               <Field
@@ -204,8 +193,9 @@ export function TicketForm() {
               >
                 <FieldLabel
                   htmlFor="ticket-content"
-                  className="!flex w-full flex-row items-center justify-start gap-1 text-left text-xs font-semibold text-[#264237]"
+                  className="flex w-full flex-row items-center justify-start gap-1 text-left text-xs font-semibold text-[#264237]"
                 >
+                  <SquareText className="w-3.5 h-3.5 text-(--primary)" />
                   <span>Nội dung đơn hàng</span>
                   <span aria-hidden="true" className="text-primary">
                     *
@@ -226,9 +216,18 @@ export function TicketForm() {
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="input-field-fee">Phí ship</FieldLabel>
+                <FieldLabel
+                  htmlFor="ticket-fee"
+                  className="!flex w-full flex-row items-center justify-start gap-1 text-left text-xs font-semibold text-[#264237]"
+                >
+                  <DollarSign className="w-3.5 h-3.5 text-(--primary)" />
+                  <span>Phí ship</span>
+                  <span aria-hidden="true" className="text-primary">
+                    *
+                  </span>
+                </FieldLabel>
                 <Input
-                  id="input-field-fee"
+                  id="ticket-fee"
                   type="text"
                   placeholder="Nhập phí ship"
                   value={feeShip ? Number(feeShip).toLocaleString("vi-VN") : ""}
@@ -248,8 +247,53 @@ export function TicketForm() {
                         onClick={() => setFeeShip(item.value)}
                         className={`cursor-pointer px-2.5 py-1 text-[11px] font-medium transition-all rounded-xl ${
                           isSelected
-                            ? "bg-red-600 text-white hover:bg-red-700 border-transparent shadow-sm"
-                            : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-red-50 hover:text-red-700 hover:border-red-50"
+                            ? "bg-(--color-bg) text-white hover:bg-(--color-bg) border-transparent shadow-sm"
+                            : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-(--color-bg) hover:text-primary hover:border-primary"
+                        }`}
+                      >
+                        {item.label}
+                      </Badge>
+                    );
+                  })}
+                </div>
+              </Field>
+
+              <Field>
+                <FieldLabel
+                  htmlFor="ticket-other-fee"
+                  className="!flex w-full flex-row items-center justify-start gap-1 text-left text-xs font-semibold text-[#264237]"
+                >
+                  <DollarSign className="w-3.5 h-3.5 text-(--primary)" />
+                  <span>Phí chành/ phí khác</span>
+                  <span aria-hidden="true" className="text-primary">
+                    *
+                  </span>
+                </FieldLabel>
+                <Input
+                  id="ticket-other-fee"
+                  type="text"
+                  placeholder="Nhập phí chành"
+                  value={
+                    otherFee ? Number(otherFee).toLocaleString("vi-VN") : ""
+                  }
+                  onChange={(e) => handleFeeChange(e.target.value)}
+                  className="input-custom h-12"
+                />
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[11px] text-slate-400 mr-1">
+                    Gợi ý:
+                  </span>
+                  {quickFees.map((item) => {
+                    const isSelected = otherFee === item.value;
+                    return (
+                      <Badge
+                        key={item.value}
+                        variant={isSelected ? "default" : "outline"}
+                        onClick={() => setOtherFee(item.value)}
+                        className={`cursor-pointer px-2.5 py-1 text-[11px] font-medium transition-all rounded-xl ${
+                          isSelected
+                            ? "bg-(--color-bg) text-white hover:bg-(--color-bg) border-transparent shadow-sm"
+                            : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-(--color-bg) hover:text-primary hover:border-red-50"
                         }`}
                       >
                         {item.label}
@@ -260,7 +304,7 @@ export function TicketForm() {
               </Field>
 
               {submitError && (
-                <p role="alert" className="text-sm text-red-600">
+                <p role="alert" className="text-sm text-primary">
                   {submitError}
                 </p>
               )}
@@ -273,11 +317,11 @@ export function TicketForm() {
             </FieldGroup>
           </CardContent>
         </Card>
-        <div className="mt-auto pt-8">
+        <div className="mt-auto shrink-0 pt-3">
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="h-12 w-full rounded-xl bg-[#E92332] text-white hover:bg-[#D91D2C]"
+            className="h-12 w-full rounded-xl bg-(--color-bg) text-white hover:bg-(--hover-bg)"
           >
             {isSubmitting ? "Đang xử lý..." : "Gửi phiếu"}
             <Send className="size-4" strokeWidth={2} />

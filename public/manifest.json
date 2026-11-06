@@ -4,11 +4,11 @@
   "description": "Tạo phiếu cho shipper",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#E92332",
+  "background_color": "#2d79c5",
+  "theme_color": "#2d79c5",
   "icons": [
     {
-      "src": "/icons/icon-192x192.png",
+      "src": "https://drive.google.com/thumbnail?id=1mg_BAF8geu73lzolXDueAttvHyxPUV9G&sz=w200",
       "sizes": "192x192",
       "type": "image/png"
     },

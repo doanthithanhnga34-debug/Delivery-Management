@@ -38,11 +38,12 @@ export interface BusStationInfo{
   stationAddress:string;
 }
 export interface InvoiceInfo{
+  hasInvoice:boolean;
   companyName:string;
-  taxCode:string;
-  address:string;
-  email:string;
-  phone:string;
+  taxCode?:string;
+  address?:string;
+  email?:string;
+  phone?:string;
 }
 export interface OrderTicket{
   id:string;
@@ -56,7 +57,9 @@ export interface OrderTicket{
   packageContent:string;
   shippingFee:number;
   busStation:number;
+  otherFee:number;
   codAmount:string;
   invoiceInfo?:InvoiceInfo;
   createdAt:string;
+  rawMessage:string;
 }

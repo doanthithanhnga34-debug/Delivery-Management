@@ -8,7 +8,7 @@ import { FilePlus2, History } from "lucide-react";
 const navItems = [
   {
     label: "Tạo phiếu",
-    href: "/create",
+    href: "/",
     icon: FilePlus2,
   },
   {
@@ -25,15 +25,8 @@ export function BottomNav() {
     (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
   );
 
-  return (
-    <nav
-  className="
-    relative z-20 mx-auto w-full max-w-lg shrink-0
-    bg-white
-    px-3 pt-2
-    pb-[calc(env(safe-area-inset-bottom,0px)+8px)]
-  "
->
+   return (
+    <nav className="relative z-20 w-full shrink-0 bg-white">
       <div className="bottom-nav">
         <div
           className="bottom-nav__slider"
@@ -43,14 +36,14 @@ export function BottomNav() {
           }}
         />
 
-        {navItems.map((item, index) => {
-          const isActive =
-            pathname === item.href || pathname.startsWith(`${item.href}/`);
+        {navItems.map((item) => {
+          const isActive = pathname === item.href;
 
           return (
             <Link
               key={item.href}
               href={item.href}
+              prefetch
               className={`bottom-nav__item ${
                 isActive ? "bottom-nav__item--active" : ""
               }`}

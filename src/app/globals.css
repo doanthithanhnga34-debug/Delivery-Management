@@ -91,7 +91,6 @@
 }
 * {
   box-sizing: border-box;
-  border-color: var(--border);
 }
 body {
   margin: 0;
@@ -103,4 +102,14 @@ select {
 }
 button {
   cursor: pointer;
+}
+@layer components {
+  .ticket-detail-drawer {
+    transition-duration: 400ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .ticket-detail-drawer[data-swiping] {
+    transition-duration: 0ms;
+  }
 }

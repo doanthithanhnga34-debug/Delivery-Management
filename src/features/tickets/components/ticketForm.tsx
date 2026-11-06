@@ -10,7 +10,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/toast";
-import { formatCurrency } from "@/utils/formatter";
 
 const SHIPPER_STORAGE_KEY = "delivery_shipper_name";
 
@@ -326,10 +325,6 @@ export function TicketForm() {
             {isSubmitting ? "Đang xử lý..." : "Gửi phiếu"}
             <Send className="size-4" strokeWidth={2} />
           </Button>
-
-          {/* <p className="mt-3 text-center text-[11px] text-[#9B9BAD]">
-            Phiếu được lưu tự động vào lịch sử.
-          </p> */}
         </div>
       </form>
     </div>

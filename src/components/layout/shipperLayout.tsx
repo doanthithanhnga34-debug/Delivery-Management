@@ -2,9 +2,13 @@ import type { ReactNode } from "react";
 import { Truck } from "lucide-react";
 import { BottomNav } from "./bottomNav";
 import { Header } from "./header";
+import { Loading } from "./loading";
 
-export function ShipperLayout({ children }: { children: ReactNode }) {
-   return (
+interface ShipperLayoutProps {
+  children: ReactNode;
+}
+export function ShipperLayout({ children }: ShipperLayoutProps) {
+  return (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-[#FFF5F6]">
       <Header />
 

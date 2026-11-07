@@ -1,6 +1,5 @@
 
 import { CreateTicketInput } from "@/types/ticket.types";
-import { parsedTicketContent } from "./ticket.parse";
 import { saveTicketToSheet, } from "./ticket.repository";
 
 
@@ -8,7 +7,6 @@ import { saveTicketToSheet, } from "./ticket.repository";
 
 export async function createTicket(input:CreateTicketInput){
     const shipperName = input.shipperName.trim().toUpperCase();
-    // const parsed = parsedTicketContent(input.content);
       const content = input.content.trim();
 
       if (!shipperName || !content) {
@@ -25,6 +23,7 @@ export async function createTicket(input:CreateTicketInput){
        shipperName,
        content,
        shippingFee: input.shippingFee,
+       otherFee:input.otherFee
      });
 }
 

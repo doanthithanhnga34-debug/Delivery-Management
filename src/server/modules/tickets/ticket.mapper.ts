@@ -1,3 +1,4 @@
+import { shipperSheetConfigs } from "@/server/config/shipperSheet.config";
 import { Ticket } from "@/types/ticket.types";
 import { time } from "console";
 
@@ -7,12 +8,96 @@ export interface TicketColumnConfig{
     shippingFeeColumn:number;
     otherFeeColumn:number;
 }
+type ShipperSheetConfig =
+  (typeof shipperSheetConfigs)[string];
+interface MapSheetRowInput {
+  row: string[];
+  rowNumber: number;
+  shipperCode: string;
+  config: ShipperSheetConfig;
+}
+function parseSheetMoney(
+  value: string | undefined,
+): number {
+  if (!value?.trim()) return 0;
 
-export interface MapTicketInput{
-    row: string[];
-    rowNumber: number;
-    shipperCode:string;
-    config: TicketColumnConfig
+  const normalized = value
+    .replace(/[^\d-]/g, "");
+
+  if (!normalized) return 0;
+
+  const amount = Number(normalized);
+
+  return Number.isSafeInteger(amount) && amount >= 0
+    ? amount
+    : 0;
+}
+function parseSheetTimestamp(
+  value: string | undefined,
+): string {
+  const raw = value?.trim() ?? "";
+
+  if (!raw) return "";
+
+  const match = raw.match(
+    /^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/,
+  );
+
+  if (!match) {
+    // Nếu đã là ISO hợp lệ thì giữ lại.
+    const timestamp = Date.parse(raw);
+
+    return Number.isFinite(timestamp)
+      ? new Date(timestamp).toISOString()
+      : "";
+  }
+
+  const [, day, month, year, hour, minute, second = "0"] =
+    match;
+
+  const d = Number(day);
+  const m = Number(month);
+  const y = Number(year);
+  const h = Number(hour);
+  const min = Number(minute);
+  const sec = Number(second);
+
+  if (
+    m < 1 || m > 12 ||
+    d < 1 || d > 31 ||
+    h < 0 || h > 23 ||
+    min < 0 || min > 59 ||
+    sec < 0 || sec > 59
+  ) {
+    return "";
+  }
+
+  const timestamp = Date.UTC(
+    y,
+    m - 1,
+    d,
+    h - 7,
+    min,
+    sec,
+  );
+
+  const date = new Date(timestamp);
+
+  // Kiểm tra ngày thực sự hợp lệ.
+  const local = new Date(timestamp + 7 * 60 * 60 * 1000);
+
+  if (
+    local.getUTCFullYear() !== y ||
+    local.getUTCMonth() !== m - 1 ||
+    local.getUTCDate() !== d ||
+    local.getUTCHours() !== h ||
+    local.getUTCMinutes() !== min ||
+    local.getUTCSeconds() !== sec
+  ) {
+    return "";
+  }
+
+  return date.toISOString();
 }
 
 export function sheetDateToISO(value:string) :string | null{
@@ -69,42 +154,34 @@ export function mapSheetRowToTicket({
   rowNumber,
   shipperCode,
   config,
-}: MapTicketInput): Ticket | null {
-  const rawDate = String(
-    row[config.timestampColumn] ?? "",
-  ).trim();
+}: MapSheetRowInput): Ticket {
+  const getCell = (index: number): string => {
+    return String(row[index] ?? "").trim();
+  };
 
-  const content = String(
-    row[config.contentColumn] ?? "",
-  ).trim();
+  const content = getCell(config.contentColumn);
 
-  const rawFee = String(
-    row[config.shippingFeeColumn] ?? "",
-  ).trim();
+  const timestamp = getCell(config.timestampColumn);
 
-  if (!rawDate || !content) return null;
+  const shippingFee = parseSheetMoney(
+    getCell(config.shippingFeeColumn),
+  );
 
-  const createdAt = sheetDateToISO(rawDate);
-  const shippingFee = parseShippingFee(rawFee);
-
-  // Bỏ qua dòng tiêu đề, tổng kết,
-  // hoặc dòng không có dữ liệu phiếu hợp lệ.
-  if (!createdAt || shippingFee === null) {
-    return null;
-  }
+  const otherFee = parseSheetMoney(
+    getCell(config.otherFeeColumn),
+  );
 
   return {
-    // ID tạm cho danh sách, chưa dùng để xóa phiếu.
     id: `${shipperCode}-${rowNumber}`,
     shipperId: shipperCode,
     shipperName: shipperCode,
-    content,
-    createdAt:rawDate,
-    shippingFee,
 
-    // Những trường này chưa lưu trong Sheet.
-    codAmount: "",
+    content,
+    createdAt: parseSheetTimestamp(timestamp),
+
+    shippingFee,
+    otherFee,
     transportFee: 0,
-    otherFee: 0,
+    codAmount: null,
   };
 }

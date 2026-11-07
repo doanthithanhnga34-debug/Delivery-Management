@@ -18,13 +18,13 @@ const SECTION_MARKERS: {
   {
     type: "invoice",
     pattern:
-      /(?:thông\s*tin\s*(?:xuất\s*hóa\s*đơn|hóa\s*đơn|xhđ)|xuất\s*(?:hóa\s*đơn|hoá\s*đơn|hđ|hd)|hóa\s*đơn\s*đỏ|tên\s*(?:cty|công\s*ty)\s*:|công\s*ty\s+(?:tnhh|cổ\s*phần)|mã\s*số\s*thuế|mst\s*:)/giu,
+      /(?:thông\s*tin\s*(?:xuất\s*hóa\s*đơn|hóa\s*đơn|xhđ)|xuất\s*(?:hóa\s*đơn|hoá\s*đơn|hđ|hd)|hóa\s*đơn\s*đỏ|tên\s*(?:cty|công\s*ty)\s*:|công\s*ty\s+(?:tnhh|cổ\s*phần)|hộ\s*kinh\s*doanh|mã\s*số\s*thuế|mst\s*:)/giu,
   },
- {
-  type: "carrier",
-  pattern:
-    /(?:chành\s*xe|chành\s+số\s*\d+|gửi\s*xe|gởi\s*xe|nhà\s*xe\s+(?!check\b|trước\b|chưa\b)[\p{L}]+|xe\s+(?!chạy\b|giao\b|đến\b|đi\b|về\b)[\p{Lu}][\p{L}]*(?:\s+[\p{Lu}][\p{L}]*){0,3})/giu,
-},
+  {
+    type: "carrier",
+    pattern:
+      /(?:chành\s*xe|chành\s+số\s*\d+|gửi\s*xe|gởi\s*xe|nhà\s*xe\s+(?!check\b|trước\b|chưa\b|kiểm\s*tra\b)[\p{L}]+|xe\s+(?!check\b|chạy\b|giao\b|đến\b|đi\b|về\b)[\p{Lu}][\p{L}]*(?:\s+[\p{Lu}][\p{L}]*){0,3})/giu,
+  },
   {
     type: "delivery",
     pattern:
@@ -95,9 +95,18 @@ const EXPLICIT_STREET_START =
   /(?:\b(?:hẻm|ngõ)\s+\d+(?:\/\d+)*|\b(?:số\s*)?\d{1,5}[a-z]?(?:\/\d+[a-z]?)*\s+(?:đường|đ\.|hẻm|ngõ|quốc\s*lộ|ql)\s*[\p{L}\d]+)/iu;
 const ALPHANUMERIC_HOUSE_START =
   /\b[A-Z]\d{1,5}(?:\/\d+[A-Z]?)+\s+[\p{L}]+(?:\s+[\p{L}]+){0,5}/iu;
+const TIME_CONTEXT_PATTERN =
+  /(?:^|\s)(?:sáng|chiều|tối|thứ|t2|t3|t4|t5|t6|t7|cn|chủ nhật|giao trước|gửi sớm)\s*$/iu;
 
+const ADDRESS_AREA_HINT =
+  /\b(?:cam\s*ranh|đà\s*lạt|nha\s*trang|biên\s*hòa|tân\s*an|long\s*xuyên)\b/iu;
 
-  function cleanText(value: string): string {
+const PRODUCT_LINE_START =
+  /(?:^|\s)[-–]?\s*\d+\s*(?:(?:kg|gói|thùng|chai|bịch|hộp|hũ)\b|(?:chả|bánh|súp|sốt|nước|bột|gạo|mì|tương|phô\s+mai)\b)/iu;
+
+const COMPLEX_HOUSE_NUMBER = /\b[A-Z]\d{1,4}-\d{1,4}[A-Z]?\s+[\p{L}]+/iu;
+
+function cleanText(value: string): string {
   return value
     .normalize("NFC")
     .replace(/\s+/g, " ")
@@ -110,9 +119,9 @@ function prepareContent(content: string): string {
   return content
     .normalize("NFC")
     .replace(/\r\n?/g, "\n")
-    .replace(/-{5,}/g, "\n")
+    .replace(/-{5,}/g, "\n__SECTION_BREAK__\n")
     .replace(
-      /(\S)\s+(?=(?:thông tin xuất hóa đơn|thông tin hóa đơn|nhà xe|gửi xe|gởi xe|bến xe)\b)/giu,
+      /(\S)\s+(?=(?:thông tin xuất hóa đơn|thông tin hóa đơn|nhà xe\s+(?!check\b|trước\b|chưa\b)|chành xe|gửi xe|gởi xe|bến xe)\b)/giu,
       "$1\n",
     )
     .trim();
@@ -178,18 +187,17 @@ function isAddressCandidate(text: string): boolean {
   const hasStreet = STREET_PATTERN.test(text);
   const hasShortAddress = SHORT_ADDRESS_PATTERN.test(text);
   const hasArea = NON_NUMBERED_ADDRESS.test(text);
-  const hasAlphanumericHouse =
-  ALPHANUMERIC_HOUSE_START.test(text);
+  const hasAlphanumericHouse = ALPHANUMERIC_HOUSE_START.test(text);
 
   if (
-  !hasAdmin &&
-  !hasStreet &&
-  !hasShortAddress &&
-  !hasArea &&
-  !hasAlphanumericHouse
-) {
-  return false;
-}
+    !hasAdmin &&
+    !hasStreet &&
+    !hasShortAddress &&
+    !hasArea &&
+    !hasAlphanumericHouse
+  ) {
+    return false;
+  }
 
   if (PRODUCT_QUANTITY.test(text.trim()) && !hasAdmin && !hasArea) {
     return false;
@@ -231,7 +239,8 @@ function findAddressStart(text: string): number {
   }
 
   const explicit = [
-     ALPHANUMERIC_HOUSE_START,
+    COMPLEX_HOUSE_NUMBER,
+    ALPHANUMERIC_HOUSE_START,
     EXPLICIT_STREET_START,
     BUILDING_STREET_START,
     HOUSE_WITH_STREET,
@@ -256,7 +265,21 @@ function findAddressStart(text: string): number {
   for (const match of text.matchAll(HOUSE_WITH_NAME)) {
     const candidate = match[0];
 
-    // Không nhận giờ: 10H, 16H30...
+    const before = text.slice(Math.max(0, match.index - 30), match.index);
+
+    // Bỏ qua các cụm ngày/giờ như "THỨ 2 GỬI SỚM"
+    if (TIME_CONTEXT_PATTERN.test(before)) {
+      continue;
+    }
+
+    // Bỏ qua nếu bắt đầu bằng số rồi đến từ khóa thao tác
+    if (
+      /^\d+\s+(?:gửi|giao|chuyển|đóng|lấy|nhận|báo|ship)\b/iu.test(candidate)
+    ) {
+      continue;
+    }
+
+    // Không nhận giờ: 10H, 16H30
     if (/^\d{1,2}h(?:\d{1,2})?/iu.test(candidate)) {
       continue;
     }
@@ -283,7 +306,10 @@ function findAddressStart(text: string): number {
 
     const addressRegion = nearbyText.slice(0, end);
 
-    if (ADMIN_PATTERN.test(addressRegion)) {
+    if (
+      ADMIN_PATTERN.test(addressRegion) ||
+      ADDRESS_AREA_HINT.test(addressRegion)
+    ) {
       return match.index;
     }
   }
@@ -304,6 +330,7 @@ function trimAddress(text: string): string {
   const addressPart = text.slice(startIndex).trim();
 
   const endPatterns: RegExp[] = [
+    PRODUCT_LINE_START,
     RECEIVER_SUFFIX_PATTERN,
 
     // Số điện thoại

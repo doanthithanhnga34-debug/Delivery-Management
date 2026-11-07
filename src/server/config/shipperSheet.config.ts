@@ -12,7 +12,7 @@ export const shipperSheetConfigs: Record<
   ShipperSheetConfig
 > = {
   DIEP: {
-    sheetName: "DIEP_TEST",
+    sheetName: "DIEP",
     timestampColumn: 0,
     contentColumn: 1,
     shippingFeeColumn: 4,
@@ -21,7 +21,7 @@ export const shipperSheetConfigs: Record<
   },
 
   HUY: {
-    sheetName: "HUY_TEST",
+    sheetName: "HUY",
     timestampColumn: 0,
     contentColumn: 1,
     shippingFeeColumn: 4,

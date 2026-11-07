@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Truck } from "lucide-react";
 import { BottomNav } from "./bottomNav";
 import { Header } from "./header";
-import { Loading } from "./loading";
+import { Loading } from "../../app/(shipper)/history/loading";
 
 interface ShipperLayoutProps {
   children: ReactNode;

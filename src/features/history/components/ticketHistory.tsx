@@ -283,7 +283,7 @@ export function TicketHistory({
             <div className="flex items-center gap-1.5">
               <DollarSign className="w-3.5 h-3.5 text-blue-600" />
               <span className="text-[11px] text-zinc-600 dark:text-zinc-400">
-                Tiền COD:
+                Tiền:
               </span>
             </div>
             <span className="font-mono font-bold text-xs text-blue-700 dark:text-blue-400">

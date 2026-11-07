@@ -1,11 +1,37 @@
+import { getTicketSheet } from "@/server/modules/tickets/ticket.repository";
 import { createTicket } from "@/server/modules/tickets/ticket.service";
 import { NextResponse } from "next/server";
 
-export async function GET() {
-  return NextResponse.json({
-    success: true,
-    message: "Tickets API is working",
-  });
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const shipperName = searchParams.get("shipperName")?.trim().toUpperCase();
+    if (!shipperName) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Thiếu tên shipper",
+        },
+        { status: 400 },
+      );
+    }
+    const tickets = await getTicketSheet(shipperName);
+    return NextResponse.json({
+      success: true,
+      total: tickets.length,
+      data: tickets,
+    });
+  } catch (error) {
+    console.error("[GET_TICKETS_ERROR]", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Không thể lấy lịch sử phiếu",
+      },
+      { status: 500 },
+    );
+  }
 }
 
 export async function POST(request: Request) {
@@ -18,9 +44,11 @@ export async function POST(request: Request) {
       !("shipperName" in body) ||
       !("content" in body) ||
       !("shippingFee" in body) ||
+      !("otherFee" in body) ||
       typeof body.shipperName !== "string" ||
       typeof body.content !== "string" ||
-      typeof body.shippingFee !== "number"
+      typeof body.shippingFee !== "number" ||
+      typeof body.otherFee !== "number"
     ) {
       return NextResponse.json(
         {
@@ -31,19 +59,13 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log("[TICKET_REQUEST]", {
-      shipperName: body.shipperName,
-      shippingFee: body.shippingFee,
-    });
-
     const result = await createTicket({
       shipperName: body.shipperName,
       content: body.content,
       shippingFee: body.shippingFee,
+      otherFee: body.otherFee,
       deliveryDate: new Date().toISOString(),
     });
-
-    console.log("[TICKET_SAVED]", result);
 
     return NextResponse.json(
       {

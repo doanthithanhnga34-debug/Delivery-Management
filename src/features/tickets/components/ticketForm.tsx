@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/toast";
+import { extractShippingFee } from "../services/extractShippingFee";
 
 const SHIPPER_STORAGE_KEY = "delivery_shipper_name";
 
@@ -42,7 +43,7 @@ export function TicketForm() {
 
   const shipperName = editedShipperName ?? savedShipperName;
   const [content, setContent] = useState("");
-  const [feeShip, setFeeShip] = useState("");
+  const [shipFee, setShipFee] = useState("");
   const [otherFee, setOtherFee] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -57,10 +58,25 @@ export function TicketForm() {
     { label: "45k", value: "45000" },
     { label: "50k", value: "50000" },
   ];
+  const [isShippingFeeEdited, setIsShippingFeeEdited] = useState(false);
+
+  function handleContentChange(value: string) {
+    setContent(value);
+
+    if (!isShippingFeeEdited) {
+      const extracted = extractShippingFee(value);
+      setShipFee(extracted !== null ? String(extracted) : "");
+    }
+  }
 
   function handleFeeChange(value: string) {
     const digits = value.replace(/\D/g, "");
-    setFeeShip(digits);
+    setOtherFee(digits);
+  }
+  function clearForm() {
+    setContent("");
+    setShipFee("");
+    setOtherFee("");
   }
 
   async function handleSubmit(e: SubmitEvent<HTMLFormElement>) {
@@ -79,15 +95,21 @@ export function TicketForm() {
       return;
     }
 
-    if (feeShip === "") {
+    if (shipFee === "") {
       setSubmitError("Vui lòng nhập phí ship.");
       return;
     }
 
-    const shippingFee = Number(feeShip);
+    const shippingFee = Number(shipFee);
+    const parsedOtherFee = otherFee.trim() === "" ? 0 : Number(otherFee);
 
     if (!Number.isSafeInteger(shippingFee) || shippingFee < 0) {
       setSubmitError("Phí ship không hợp lệ.");
+      return;
+    }
+
+    if (!Number.isSafeInteger(parsedOtherFee) || parsedOtherFee < 0) {
+      setSubmitError("Phí chành/phí khác không hợp lệ.");
       return;
     }
 
@@ -103,6 +125,7 @@ export function TicketForm() {
           shipperName: name,
           content: ticketContent,
           shippingFee,
+          otherFee: parsedOtherFee,
         }),
       });
 
@@ -113,8 +136,7 @@ export function TicketForm() {
       }
       localStorage.setItem(SHIPPER_STORAGE_KEY, name);
       setEditedShipperName(name);
-      setContent("");
-      setFeeShip("");
+      clearForm();
 
       toast.add({
         type: "success",
@@ -139,25 +161,6 @@ export function TicketForm() {
       <form onSubmit={handleSubmit} className="flex w-full flex-1 flex-col">
         <Card className="mt-4 overflow-hidden rounded-[24px] border-0 bg-white py-0 shadow-none ring-0">
           <CardContent className="p-5 sm:p-6">
-            {/* <div className="mb-6 flex items-center gap-3">
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#FFF0F1]">
-                <ClipboardPenLine
-                  size={22}
-                  strokeWidth={1.8}
-                  className="text-[#E92332]"
-                />
-              </div>
-
-              <div className="min-w-0">
-                <h2 className="text-[15px] font-bold text-[#282036]">
-                  Thông tin giao hàng
-                </h2>
-
-                <p className="mt-0.5 text-[11px] text-[#9992A3]">
-                  Điền thông tin và gửi trong vài giây.
-                </p>
-              </div>
-            </div> */}
             <FieldGroup className="gap-5">
               <Field
                 orientation="vertical"
@@ -208,7 +211,7 @@ export function TicketForm() {
                   rows={6}
                   required
                   value={content}
-                  onChange={(e) => setContent(e.target.value)}
+                  onChange={(event) => handleContentChange(event.target.value)}
                   className="min-h-[120px] resize-y py-3 
                 leading-6 input-custom"
                 />
@@ -229,8 +232,11 @@ export function TicketForm() {
                   id="ticket-fee"
                   type="text"
                   placeholder="Nhập phí ship"
-                  value={feeShip ? Number(feeShip).toLocaleString("vi-VN") : ""}
-                  onChange={(e) => handleFeeChange(e.target.value)}
+                  value={shipFee ? Number(shipFee).toLocaleString("vi-VN") : ""}
+                  onChange={(event) => {
+                    setShipFee(event.target.value);
+                    setIsShippingFeeEdited(true);
+                  }}
                   className="input-custom h-12"
                 />
                 <div className="flex flex-wrap items-center gap-1.5 pt-1">
@@ -238,12 +244,12 @@ export function TicketForm() {
                     Gợi ý:
                   </span>
                   {quickFees.map((item) => {
-                    const isSelected = feeShip === item.value;
+                    const isSelected = shipFee === item.value;
                     return (
                       <Badge
                         key={item.value}
                         variant={isSelected ? "default" : "outline"}
-                        onClick={() => setFeeShip(item.value)}
+                        onClick={() => setShipFee(item.value)}
                         className={`cursor-pointer px-2.5 py-1 text-[11px] font-medium transition-all rounded-xl ${
                           isSelected
                             ? "bg-(--color-bg) text-white hover:bg-(--color-bg) border-transparent shadow-sm"
@@ -271,7 +277,7 @@ export function TicketForm() {
                 <Input
                   id="ticket-other-fee"
                   type="text"
-                  placeholder="Nhập phí chành"
+                  placeholder="Nhập phí chành/ phí khác"
                   value={
                     otherFee ? Number(otherFee).toLocaleString("vi-VN") : ""
                   }

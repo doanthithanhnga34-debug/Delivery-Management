@@ -1,4 +1,4 @@
-import { NumberField } from "@base-ui/react";
+
 
 export interface Ticket {
   id: string;
@@ -17,6 +17,7 @@ export interface CreateTicketInput {
   content: string;
   shippingFee: number;
   deliveryDate: string;
+  otherFee:number;
 }
 
 export interface SaveTicketInput {

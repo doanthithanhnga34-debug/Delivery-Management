@@ -29,7 +29,6 @@ export function TicketList({ tickets }: TicketListProps) {
                 key={ticket.id}
                 ticket={ticket}
                 onOpenDetail={(selected) => {
-                  console.log("Đã click phiếu:", selected.code);
                   setSelectedTicket(selected);
                 }}
               />

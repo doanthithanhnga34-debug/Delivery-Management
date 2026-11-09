@@ -1,5 +1,3 @@
-
-
 export interface Ticket {
   id: string;
   shipperId: string;
@@ -17,14 +15,14 @@ export interface CreateTicketInput {
   content: string;
   shippingFee: number;
   deliveryDate: string;
-  otherFee:number;
+  otherFee: number;
 }
 
 export interface SaveTicketInput {
   shipperName: string;
   content: string;
   shippingFee: number;
-  otherFee:number;
+  otherFee: number;
 }
 export type TicketHistoryProps = {
   tickets?: Ticket[];
@@ -32,35 +30,35 @@ export type TicketHistoryProps = {
   onCreateReport?: (tickets: Ticket[]) => void;
 };
 
-export type DeliveryMethod = | "direct" | "bus_station"
+export type DeliveryMethod = "direct" | "bus_station";
 
-export interface BusStationInfo{
-  name:string;
-  stationAddress:string;
+export interface TicketCarrier {
+  name: string | null;
+  address: string | null;
+  hasCarrier: boolean;
 }
-export interface InvoiceInfo{
-  hasInvoice:boolean;
-  companyName:string;
-  taxCode?:string;
-  address?:string;
-  email?:string;
-  phone?:string;
+export interface InvoiceInfo {
+  hasInvoice: boolean;
+  companyName: string;
+  taxCode?: string;
+  address?: string;
+  email?: string;
+  phone?: string;
 }
-export interface OrderTicket{
-  id:string;
-  code:string;
-  shipperName:string;
-  customerName:string;
-  customerPhone:string;
-  deliveryAddress:string;
-  deliveryMethod:DeliveryMethod;
-  busStationInfo?:BusStationInfo;
-  packageContent:string;
-  shippingFee:number;
-  busStation:number;
-  otherFee:number;
-  codAmount:string;
-  invoiceInfo?:InvoiceInfo;
-  createdAt:string;
-  rawMessage:string;
+export type TicketPayment = {
+  type: "cash" | "debt" | "bank_transfer";
+  label: string;
+  amount: string;
+};
+export interface TicketAnalysis {
+  deliveryAddress: string | null;
+  addressConfidence: number | null;
+
+  carrier: TicketCarrier;
+  payment: TicketPayment | null;
+  invoiceAddress: string | null;
+}
+
+export interface AnalyzedTicket extends Ticket {
+  analysis: TicketAnalysis;
 }

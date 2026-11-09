@@ -1,420 +1,217 @@
-import { AddressType } from "@/types/address.types";
+import type { AddressType } from "@/types/address.types";
 
-interface ExtractedAddress {
+export interface ExtractedAddress {
   text: string;
   type: AddressType;
   confidence: number;
 }
 
+type SectionType = AddressType;
 interface AddressSection {
   type: SectionType;
   text: string;
 }
 
-const SECTION_MARKERS: {
-  type: SectionType;
-  pattern: RegExp;
-}[] = [
-  {
-    type: "invoice",
-    pattern:
-      /(?:thông\s*tin\s*(?:xuất\s*hóa\s*đơn|hóa\s*đơn|xhđ)|xuất\s*(?:hóa\s*đơn|hoá\s*đơn|hđ|hd)|hóa\s*đơn\s*đỏ|tên\s*(?:cty|công\s*ty)\s*:|công\s*ty\s+(?:tnhh|cổ\s*phần)|hộ\s*kinh\s*doanh|mã\s*số\s*thuế|mst\s*:)/giu,
-  },
-  {
-    type: "carrier",
-    pattern:
-      /(?:chành\s*xe|chành\s+số\s*\d+|gửi\s*xe|gởi\s*xe|nhà\s*xe\s+(?!check\b|trước\b|chưa\b|kiểm\s*tra\b)[\p{L}]+|xe\s+(?!check\b|chạy\b|giao\b|đến\b|đi\b|về\b)[\p{Lu}][\p{L}]*(?:\s+[\p{Lu}][\p{L}]*){0,3})/giu,
-  },
-  {
-    type: "delivery",
-    pattern:
-      /(?:thông\s*tin\s*giao\s*hàng|địa\s*chỉ\s*giao\s*hàng|địa\s*chỉ\s*giao|địa\s*chỉ\s*nhận|giao\s*về|giao\s*tại|giao\s*đến|giao\s*tận\s*nơi|gửi\s*về|người\s*nhận\s*:|tên\s*ng\s*nhận\s*:)/giu,
-  },
+const INVOICE_MARKER = /(?:th[oô]ng\s*tin\s*(?:xu[aấ]t\s*)?(?:h[oó]a|ho[aá])\s*đ[oơ]n|xu[aấ]t\s*(?:h[oó]a|ho[aá])\s*đ[oơ]n|t[eê]n\s*người\s*mua\s*:|t[eê]n\s*đơn\s*vị\s*:|hộ\s*kinh\s*doanh|công\s*ty\s*tnhh|mã\s*số\s*thuế\s*:|mst\s*:)/giu;
+const CARRIER_MARKER = /(?:nhà\s*xe\s+(?!check\b|trước\b|chưa\b)|chành\s*xe|gửi\s*xe|gởi\s*xe|xe\s+buýt\s+số\s*\d+|(?<![\p{L}])xe\s+(?=[\p{Lu}])\p{Lu}[\p{L}]*(?:\s+\p{Lu}[\p{L}]*){0,2})/giu;
+const DELIVERY_MARKER = /(?:địa\s*chỉ\s*(?:giao\s*hàng|giao|nhận)\s*:|giao\s*(?:về|tại|đến)\s+|gửi\s*về\s+|nhận\s*hàng\s+)/giu;
+
+const PHONE = /(?:\+84[\s.-]?(?:\d[\s.-]?){9}|(?<!\d)0\d(?:[\s.]?\d){8,9}(?!\d))/u;
+const MONEY = /(?:\b(?:thu\s*khách|công\s*nợ|chuyển\s*khoản|ck|ship|phí\s*ship)\s*[:：=\-]?\s*\d+)/iu;
+const PRODUCT_START = /(?:^|[\s,;])[-–]?\s*\d+\s*(?:(?:kg|gói|thùng|chai|bịch|hộp|hũ|set)\b|(?:chả|bánh|súp|sốt|nước|bột|gạo|mì|tương|phô\s*mai|kim\s*chi|rong\s*biển|ớt)\b)/iu;
+const CONTACT_END = /(?:\b(?:sđt|sdt|email|mail\s*nhận|liên\s*hệ|mst|mã\s*số\s*thuế|cccd|chủ\s*hộ|người\s*đại\s*diện)\s*[:：]|[\w.+-]+@[\w.-]+\.[a-z]{2,})/iu;
+const ADDRESS_LABEL = /(?:địa\s*chỉ|đ\/?c)\s*[:：]\s*/giu;
+const DELIVERY_NOTE_START =
+  /(?:chị\s*gửi\s*đơn\s*nhé|giao\s*giúp\s*chị\s*nha|giao\s*giúp\s*em|nhờ\s*giao\s*giúp|giao\s*giùm\s*chị|giao\s*giùm\s*em)/iu;
+
+const ADDRESS_START_PATTERNS: RegExp[] = [
+  /(?:cổng\s+[A-Z]\d+\s*[-–,]?\s*(?=đường|đ\.)|(?:kios|kiốt|ki-ốt)\s+số\s+\d+|số\s*nhà\s+\d+|bãi\s*xe\s+[^,]{0,45}?\bđối\s*diện\s+số\s+\d+)/iu,
+  /(?<![\p{L}\d])(?!(?:\d{1,2}h(?:\d{1,2})?|(?:\d{1,2}:\d{2}))\b)(?:[A-Z]{1,3}\d{1,5}(?:\/\d+[A-Z]?)?|\d{1,5}(?:\/\d+[A-Z]?)*)[a-z]?\s+[\p{L}]/iu,
+  /(?:chợ|khu\s*dân\s*cư|kdc|kđt|chung\s*cư|ấp|phố|đường|hẻm|ngõ)\s+[\p{L}\d]/iu,
 ];
+const AREA_HINT = /(?:\b(?:phường|phuong|quận|quan|huyện|xã|tỉnh|thành\s*phố|kdc|kđt|chợ|ấp|đường|phố|hẻm|khu\s*dân\s*cư)\b|\b[pq]\.?\s*\d{1,2}\b|\b(?:q|p)\.?\s*[\p{Lu}][\p{L}]+|\b(?:bình\s*thạnh|gò\s*vấp|phú\s*nhuận|thủ\s*đức|hóc\s*môn|cam\s*ranh|gia\s*lai|đồng\s*nai|củ\s*chi)\b)/iu;
 
-type SectionType = AddressType;
-
-const INVOICE_START =
-  /(?:thông tin xuất hóa đơn|thông tin hóa đơn|xuất hóa đơn|hóa đơn đỏ|mã số thuế|(?:^|\s)mst\s*:)/iu;
-
-const CARRIER_START =
-  /(?:nhà xe|chành xe|gửi xe|gởi xe|gửi ra chành|gởi ra chành|bến xe|xe phúc an|xe minh huy|xe giang)/iu;
-
-const DELIVERY_START =
-  /(?:địa chỉ giao hàng|địa chỉ giao|giao về|giao tại|giao đến|người nhận\s*:|giao tận nơi)/iu;
-
-const ADMIN_PATTERN =
-  /(?:phường|xã|quận|huyện|thành\s*phố|tỉnh|thị\s*xã|thị\s*trấn|kđt|\b[pq]\.?\s*\d{1,2}\b|\btp\.?\s*[\p{L}]+|bình\s*thạnh|thủ\s*đức)/iu;
-
-const STREET_PATTERN =
-  /(?:\b(?:số\s*)?\d{1,5}[a-z]?(?:\/\d+[a-z]?)*\s+(?:đường|đ\.|hẻm|ngõ|quốc\s*lộ|ql)\s*[\p{L}\d]+|\b(?:hẻm|ngõ)\s+\d+|\b[A-Z]\d{2,}\s*,?\s*(?:đường|đ\.)|\b\d{1,4}(?:\/\d+)*[a-z]?\s+[\p{L}]+(?:\s+[\p{L}]+){1,5})/iu;
-
-const SHORT_ADDRESS_PATTERN =
-  /(?:kios|kiốt|ki-ốt|đường|hẻm|ngõ|quốc lộ|khu phố|ấp|chợ)\s+[\p{L}\d/]+/iu;
-
-const PRODUCT_PATTERN =
-  /(?:\b\d+\s*(?:kg|thùng|gói|chai|bịch|hũ|hộp)\b|bánh gạo|chả cá|mì udon|kim chi|bột phô mai)/iu;
-
-const MONEY_PATTERN =
-  /(?:\bship\s*\d+|thu khách\s*\d+|công nợ\s*\d+|\bck\s*\d+)/iu;
-
-const CONTACT_PATTERN =
-  /(?:sđt|số điện thoại|điện thoại|email|gmail|hotline)/iu;
-
-const RECEIVER_SUFFIX_PATTERN =
-  /\s+(?:anh|chị|cô|chú|em|a\.|c\.)\s+[\p{L}]+(?=\s*[-,:]?\s*(?:0\d{9}|\+84))/iu;
-
-const HOUSE_NUMBER_STREET_START =
-  /\b\d{1,4}(?:\/\d{1,4}){0,4}[a-z]?\s+[\p{L}]+(?:\s+[\p{L}]+){0,5}/giu;
-
-const BUILDING_STREET_START =
-  /\b[A-Z]\d{2,}\s*,?\s*(?:đường|đ\.)\s*[\p{L}\d]+/iu;
-
-const COMMA_HOUSE_ADDRESS_START =
-  /\b\d{1,5}[a-z]?(?:\/\d+)*\s*,\s*(?:(?:quốc\s*lộ|ql|đường|đ\.)\s*)?[\p{L}\d]+/iu;
-
-const ADDRESS_LABEL_PATTERN =
-  /(?:địa\s*chỉ(?:\s*(?:giao(?:\s*hàng)?|nhận|e))?|đc|đ\/c)\s*[:：]\s*/giu;
-
-const HOUSE_WITH_STREET =
-  /\b\d{1,5}[a-z]?(?:\/\d+[a-z]?)*\s*,?\s*(?:đường|đ\.|hẻm|ngõ|quốc\s*lộ|ql)\s*[\p{L}\d]+/iu;
-
-const HOUSE_WITH_NAME =
-  /\b\d{1,4}[a-z]?(?:\/\d+[a-z]?)*\s*,?\s+[\p{L}]+(?:\s+[\p{L}]+){0,5}/giu;
-
-const NON_NUMBERED_ADDRESS =
-  /(?:chợ|ấp|khu\s*phố|khu\s*dân\s*cư|kdc|kđt|chung\s*cư|bến)\s+[\p{L}\d]+/iu;
-
-const PRODUCT_QUANTITY =
-  /\b\d+\s+(?:bánh|mì|sốt|nước|bột|gạo|chả|kim\s*chi|tương|phô\s*mai|súp)\b/iu;
-
-const PAYMENT_START =
-  /\b(?:ship\s*\d+|thu\s*khách|công\s*nợ|ck\s*(?:sau\s*)?\d+)\b/iu;
-
-const EXPLICIT_STREET_START =
-  /(?:\b(?:hẻm|ngõ)\s+\d+(?:\/\d+)*|\b(?:số\s*)?\d{1,5}[a-z]?(?:\/\d+[a-z]?)*\s+(?:đường|đ\.|hẻm|ngõ|quốc\s*lộ|ql)\s*[\p{L}\d]+)/iu;
-const ALPHANUMERIC_HOUSE_START =
-  /\b[A-Z]\d{1,5}(?:\/\d+[A-Z]?)+\s+[\p{L}]+(?:\s+[\p{L}]+){0,5}/iu;
-const TIME_CONTEXT_PATTERN =
-  /(?:^|\s)(?:sáng|chiều|tối|thứ|t2|t3|t4|t5|t6|t7|cn|chủ nhật|giao trước|gửi sớm)\s*$/iu;
-
-const ADDRESS_AREA_HINT =
-  /\b(?:cam\s*ranh|đà\s*lạt|nha\s*trang|biên\s*hòa|tân\s*an|long\s*xuyên)\b/iu;
-
-const PRODUCT_LINE_START =
-  /(?:^|\s)[-–]?\s*\d+\s*(?:(?:kg|gói|thùng|chai|bịch|hộp|hũ)\b|(?:chả|bánh|súp|sốt|nước|bột|gạo|mì|tương|phô\s+mai)\b)/iu;
-
-const COMPLEX_HOUSE_NUMBER = /\b[A-Z]\d{1,4}-\d{1,4}[A-Z]?\s+[\p{L}]+/iu;
-
-function cleanText(value: string): string {
-  return value
-    .normalize("NFC")
+function cleanText(text: string): string {
+  return text.normalize("NFC")
     .replace(/\s+/g, " ")
-    .replace(/^[\s,;:：\-–]+/, "")
-    .replace(/[\s,;:：\-–]+$/, "")
+    .replace(/^[\s,;:：\-–]+|[\s,;:：\-–]+$/g, "")
     .trim();
 }
 
 function prepareContent(content: string): string {
-  return content
-    .normalize("NFC")
+  return content.normalize("NFC")
+    .replace(/(?:^|\s)#\d+(?=\s)/gu, " ")
     .replace(/\r\n?/g, "\n")
-    .replace(/-{5,}/g, "\n__SECTION_BREAK__\n")
-    .replace(
-      /(\S)\s+(?=(?:thông tin xuất hóa đơn|thông tin hóa đơn|nhà xe\s+(?!check\b|trước\b|chưa\b)|chành xe|gửi xe|gởi xe|bến xe)\b)/giu,
-      "$1\n",
-    )
+    .replace(/-{5,}/g, "\n")
     .trim();
 }
 
 function splitSections(content: string): AddressSection[] {
-  const markers: {
-    index: number;
-    type: SectionType;
-  }[] = [];
-
-  for (const { type, pattern } of SECTION_MARKERS) {
+  const markers: { index: number; type: SectionType }[] = [];
+  for (const [type, pattern] of [
+    ["invoice", INVOICE_MARKER],
+    ["carrier", CARRIER_MARKER],
+    ["delivery", DELIVERY_MARKER],
+  ] as const) {
     for (const match of content.matchAll(pattern)) {
-      markers.push({
-        index: match.index,
-        type,
-      });
+      markers.push({ index: match.index, type });
     }
   }
-
   markers.sort((a, b) => a.index - b.index);
-
   const sections: AddressSection[] = [];
-
-  if (markers.length === 0) {
-    return [
-      {
-        type: isAddressCandidate(content) ? "delivery" : "unknown",
-        text: content,
-      },
-    ];
+  let position = 0;
+  let type: SectionType = "delivery";
+  for (const marker of markers) {
+    if (marker.index < position) continue;
+    const preceding = cleanText(content.slice(position, marker.index));
+    if (preceding) sections.push({ type, text: preceding });
+    type = marker.type;
+    position = marker.index;
   }
-  if (markers[0].index > 0) {
-    sections.push({
-      type: "delivery",
-      text: content.slice(0, markers[0].index).trim(),
-    });
-  }
-
-  for (let i = 0; i < markers.length; i++) {
-    const marker = markers[i];
-    const next = markers[i + 1];
-
-    const text = content
-      .slice(marker.index, next?.index ?? content.length)
-      .trim();
-
-    if (text) {
-      sections.push({
-        type: marker.type,
-        text,
-      });
-    }
-  }
-
+  const rest = cleanText(content.slice(position));
+  if (rest) sections.push({ type, text: rest });
   return sections;
 }
 
-function isAddressCandidate(text: string): boolean {
-  if (text.length < 7) return false;
+function firstMatchIndex(text: string, patterns: RegExp[]): number {
+  let earliest = text.length;
+  for (const pattern of patterns) {
+    const match = pattern.exec(text);
+    if (match && match.index < earliest) earliest = match.index;
+  }
+  return earliest;
+}
 
-  const hasAdmin = ADMIN_PATTERN.test(text);
-  const hasStreet = STREET_PATTERN.test(text);
-  const hasShortAddress = SHORT_ADDRESS_PATTERN.test(text);
-  const hasArea = NON_NUMBERED_ADDRESS.test(text);
-  const hasAlphanumericHouse = ALPHANUMERIC_HOUSE_START.test(text);
+function trimAtEndMarkers(text: string): string {
+  const cut = firstMatchIndex(text, [
+    DELIVERY_NOTE_START,
+    PRODUCT_START,
+    MONEY,
+    CONTACT_END,
+  ]);
 
-  if (
-    !hasAdmin &&
-    !hasStreet &&
-    !hasShortAddress &&
-    !hasArea &&
-    !hasAlphanumericHouse
-  ) {
-    return false;
+  const prefix = text.slice(0, cut);
+
+  const start = findAddressStart(prefix);
+
+  if (start < 0) {
+    return cleanText(
+      prefix.replace(new RegExp(PHONE.source, "gu"), " "),
+    );
   }
 
-  if (PRODUCT_QUANTITY.test(text.trim()) && !hasAdmin && !hasArea) {
-    return false;
+  const phones = [
+    ...prefix.matchAll(new RegExp(PHONE.source, "gu")),
+  ];
+
+  const phoneAfterAddress = phones.find(
+    (phone) => phone.index >= start,
+  );
+
+  if (phoneAfterAddress) {
+    return cleanText(
+      prefix.slice(0, phoneAfterAddress.index),
+    );
   }
 
+  return cleanText(
+    prefix.replace(new RegExp(PHONE.source, "gu"), " "),
+  );
+}
+
+function looksLikeAddress(text: string): boolean {
+  if (text.length < 8 || text.length > 220) return false;
+  if (MONEY.test(text) || PRODUCT_START.test(text)) return false;
+  if (!AREA_HINT.test(text)) return false;
+  if (/^\d+(?:[.,]\d+)*\s*(?:ck|thu\s*khách|ship)\b/iu.test(text)) return false;
   return true;
 }
 
-function detectionSection(line: string, current: SectionType): SectionType {
-  if (INVOICE_START.test(line)) return "invoice";
-  if (CARRIER_START.test(line)) return "carrier";
-  if (DELIVERY_START.test(line)) return "delivery";
-  return current;
+function findAddressStart(text: string): number {
+  const label = [...text.matchAll(ADDRESS_LABEL)].at(-1);
+  if (label) return label.index + label[0].length;
+  const starts = ADDRESS_START_PATTERNS.map((pattern) => pattern.exec(text))
+    .filter((match): match is RegExpExecArray => match !== null);
+  if (starts.length === 0) return -1;
+  return Math.min(...starts.map((match) => match.index));
+}
+
+function extractDelivery(section: string): string | null {
+  const prepared = cleanText(section);
+
+  const relevant = trimAtEndMarkers(prepared);
+  if (!relevant) return null;
+  const startIndex = findAddressStart(relevant);
+  if (startIndex < 0) {
+
+    const destination = /(?:gửi\s*về|giao\s*về)\s+(.+)$/iu.exec(relevant);
+    if (destination && AREA_HINT.test(destination[1])) return cleanText(destination[1]);
+    return null;
+  }
+  let address = cleanText(relevant.slice(startIndex));
+ 
+  address = address.replace(/\s+(?:tên\s+(?:khách|người\s*nhận)|người\s*nhận)\s*[:：]?\s*.+$/iu, "");
+  return looksLikeAddress(address) ? address : null;
+}
+
+function extractInvoice(section: string): string | null {
+  const label = [...section.matchAll(ADDRESS_LABEL)].at(-1);
+  let candidate = label
+    ? section.slice(label.index + label[0].length)
+    : section;
+  if (!label) {
+    const addressNumber = /(?<!\d)\d{1,5}(?:\/\d+)*\s+[\p{L}]/iu.exec(candidate);
+    if (!addressNumber) return null;
+    candidate = candidate.slice(addressNumber.index);
+  }
+  candidate = cleanText(candidate.split(/(?:\b(?:chủ\s*hộ|cccd|mst|mã\s*số\s*thuế|mail|email|thông\s*tin\s*nhận\s*hóa\s*đơn|người\s*đại\s*diện|liên\s*hệ)\s*[:：]?)/iu)[0]);
+  return looksLikeAddress(candidate) ? candidate : null;
+}
+
+function extractCarrierAddress(section: string): string | null {
+  const relevant = cleanText(section);
+  const start = findAddressStart(relevant);
+  if (start < 0) return null;
+  const candidate = trimAtEndMarkers(relevant.slice(start));
+  return looksLikeAddress(candidate) ? candidate : null;
 }
 
 function calculateConfidence(text: string, type: AddressType): number {
-  let score = 0.3;
-
-  if (ADMIN_PATTERN.test(text)) score += 0.2;
-  if (STREET_PATTERN.test(text)) score += 0.2;
-  if (SHORT_ADDRESS_PATTERN.test(text)) score += 0.1;
-
-  if (type === "delivery") score += 0.15;
-  if (type === "carrier") score += 0.1;
-  if (type === "invoice") score += 0.1;
-
-  if (CONTACT_PATTERN.test(text)) score -= 0.05;
-  if (MONEY_PATTERN.test(text)) score -= 0.05;
-
-  return Math.max(0, Math.min(0.95, Number(score.toFixed(2))));
-}
-
-function findAddressStart(text: string): number {
-  const labels = [...text.matchAll(ADDRESS_LABEL_PATTERN)];
-
-  if (labels.length > 0) {
-    const label = labels[labels.length - 1];
-    return (label.index ?? 0) + label[0].length;
-  }
-
-  const explicit = [
-    COMPLEX_HOUSE_NUMBER,
-    ALPHANUMERIC_HOUSE_START,
-    EXPLICIT_STREET_START,
-    BUILDING_STREET_START,
-    HOUSE_WITH_STREET,
-    COMMA_HOUSE_ADDRESS_START,
-  ];
-
-  const positions: number[] = [];
-
-  for (const pattern of explicit) {
-    const match = pattern.exec(text);
-
-    if (match) {
-      positions.push(match.index);
-    }
-  }
-
-  if (positions.length > 0) {
-    return Math.min(...positions);
-  }
-
-  // Địa chỉ số nhà + tên đường không có chữ "đường"
-  for (const match of text.matchAll(HOUSE_WITH_NAME)) {
-    const candidate = match[0];
-
-    const before = text.slice(Math.max(0, match.index - 30), match.index);
-
-    // Bỏ qua các cụm ngày/giờ như "THỨ 2 GỬI SỚM"
-    if (TIME_CONTEXT_PATTERN.test(before)) {
-      continue;
-    }
-
-    // Bỏ qua nếu bắt đầu bằng số rồi đến từ khóa thao tác
-    if (
-      /^\d+\s+(?:gửi|giao|chuyển|đóng|lấy|nhận|báo|ship)\b/iu.test(candidate)
-    ) {
-      continue;
-    }
-
-    // Không nhận giờ: 10H, 16H30
-    if (/^\d{1,2}h(?:\d{1,2})?/iu.test(candidate)) {
-      continue;
-    }
-
-    // Không nhận số lượng sản phẩm
-    if (PRODUCT_QUANTITY.test(candidate)) {
-      continue;
-    }
-
-    // Không nhận số điện thoại
-    if (/^0\d{9,10}\b/u.test(candidate)) {
-      continue;
-    }
-
-    const nearbyText = text.slice(match.index, match.index + 120);
-
-    const product = PRODUCT_QUANTITY.exec(nearbyText);
-    const payment = PAYMENT_START.exec(nearbyText);
-
-    let end = nearbyText.length;
-
-    if (product) end = Math.min(end, product.index);
-    if (payment) end = Math.min(end, payment.index);
-
-    const addressRegion = nearbyText.slice(0, end);
-
-    if (
-      ADMIN_PATTERN.test(addressRegion) ||
-      ADDRESS_AREA_HINT.test(addressRegion)
-    ) {
-      return match.index;
-    }
-  }
-
-  const area = NON_NUMBERED_ADDRESS.exec(text);
-
-  if (area) {
-    return area.index;
-  }
-
-  return -1;
-}
-function trimAddress(text: string): string {
-  const startIndex = findAddressStart(text);
-
-  if (startIndex === -1) return "";
-
-  const addressPart = text.slice(startIndex).trim();
-
-  const endPatterns: RegExp[] = [
-    PRODUCT_LINE_START,
-    RECEIVER_SUFFIX_PATTERN,
-
-    // Số điện thoại
-    /(?:\+84|0)\s*(?:\d[\s.]*){8,10}/u,
-
-    // Sản phẩm có đơn vị
-    /\b\d+\s*(?:kg|thùng|gói|chai|bịch|hũ|hộp|set)\b/iu,
-
-    // Sản phẩm bắt đầu bằng số lượng
-    /(?:^|\s)[-–]?\s*\d+\s+(?:bánh|mì|sốt|gạo|bột|chả|củ|nước|kim\s*chi|súp|tương)\b/iu,
-
-    // Tiền
-    /\b(?:ship\s*\d+|thu\s*khách|công\s*nợ|ck\s*(?:sau\s*)?\d+)/iu,
-
-    // Thông tin liên hệ
-    /\b(?:mst|mã\s*số\s*thuế|email|gmail|mail|sđt|sdt)\s*:?/iu,
-
-    // Email không có nhãn
-    /[\w.+-]+@[\w.-]+\.[a-z]{2,}/iu,
-
-    // Tên doanh nghiệp
-    /\b(?:hộ\s*kinh\s*doanh|tên\s*(?:cty|công\s*ty))\b/iu,
-
-    /-{3,}/u,
-  ];
-
-  let endIndex = addressPart.length;
-
-  for (const pattern of endPatterns) {
-    const match = pattern.exec(addressPart);
-
-    if (match && match.index < endIndex) {
-      endIndex = match.index;
-    }
-  }
-
-  return cleanText(addressPart.slice(0, endIndex));
+  let score = type === "delivery" ? 0.55 : 0.5;
+  if (/(?:đường|phường|quận|huyện|xã|tỉnh|thành\s*phố|p\.?\s*\d+|q\.?\s*\d+)/iu.test(text)) score += 0.2;
+  if (/\d+[A-Za-z]?(?:\/\d+[A-Za-z]?)?\s+[\p{L}]/iu.test(text)) score += 0.15;
+  if (text.length >= 20) score += 0.05;
+  return Math.min(0.95, Number(score.toFixed(2)));
 }
 
 export function extractAddresses(content: string): ExtractedAddress[] {
   if (!content?.trim()) return [];
-
-  const prepared = prepareContent(content);
-  const sections = splitSections(prepared);
-
+  const sections = splitSections(prepareContent(content));
   const results: ExtractedAddress[] = [];
-
   for (const section of sections) {
-    const lines = section.text.split("\n").map(cleanText).filter(Boolean);
-
-    for (const line of lines) {
-      const addressText = trimAddress(line);
-
-      if (!addressText) continue;
-      if (!isAddressCandidate(addressText)) continue;
-
+    for (const line of section.text.split("\n").map(cleanText).filter(Boolean)) {
+      const address = section.type === "invoice"
+        ? extractInvoice(line)
+        : section.type === "carrier"
+          ? extractCarrierAddress(line)
+          : extractDelivery(line);
+      if (!address) continue;
       results.push({
-        text: addressText,
+        text: address,
         type: section.type,
-        confidence: calculateConfidence(addressText, section.type),
+        confidence: calculateConfidence(address, section.type),
       });
     }
   }
-
   const unique = new Map<string, ExtractedAddress>();
-
-  for (const address of results) {
-    const key = `${address.type}:${address.text.toLowerCase()}`;
-
-    const previous = unique.get(key);
-
-    if (!previous || previous.confidence < address.confidence) {
-      unique.set(key, address);
-    }
+  for (const item of results) {
+    const key = `${item.type}:${item.text.toLocaleLowerCase("vi-VN")}`;
+    if (!unique.has(key)) unique.set(key, item);
   }
-
   return [...unique.values()];
 }
 
 export function getDeliveryAddress(content: string): ExtractedAddress | null {
-  const candidates = extractAddresses(content)
-    .filter((item) => item.type === "delivery")
-    .sort((a, b) => b.confidence - a.confidence);
-  if (candidates.length !== 1) return null;
-
-  return candidates[0].confidence >= 0.7 ? candidates[0] : null;
+  const matches = extractAddresses(content).filter((item) => item.type === "delivery");
+  return matches.length === 1 && matches[0].confidence >= 0.7 ? matches[0] : null;
 }

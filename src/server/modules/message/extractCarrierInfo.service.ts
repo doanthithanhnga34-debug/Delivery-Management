@@ -5,9 +5,12 @@ interface CarrierInfo{
     address:string | null;
     hasCarrier:boolean
 }
-const CARRIER_NAME_PATTERN =
-  /(?:nhà\s*xe|chành\s*xe|gửi\s*xe|gởi\s*xe|xe)[ \t]+([\p{L}]+(?:-[\p{L}]+)*(?:[ \t]+[\p{L}]+(?:-[\p{L}]+)*){0,3})/giu;
-
+const CARRIER_NAME_PATTERN =[
+/\b(?:nhà\s*xe|chành\s*xe)\s+([\p{L}]+(?:\s+[\p{L}]+){0,3})/giu,
+    /\b(?:gửi\s*xe|gởi\s*xe)\s+([\p{L}]+(?:\s+[\p{L}]+){0,3})/giu,
+    /\bxe\s+([\p{L}]+(?:\s+[\p{L}]+){0,3})/giu,
+]
+ 
 const CARRIER_STOP_WORDS = new Set([
   "check",
   "chạy",
@@ -31,6 +34,13 @@ const CARRIER_END_WORDS = new Set([
   "địa",
   "chỉ",
   "sđt",
+  "hộ",
+  "kinh",
+  "doanh",
+  "công",
+  "ty",
+  "tnhh",
+  "cccd",
 ]);
 
 
@@ -50,32 +60,25 @@ export function extractCarrierInfo(content: string): CarrierInfo {
 }
 
 function extractCarrierName(content: string): string | null {
-  const normalized = content.replace(/-{3,}/g, "\n");
 
-  for (const match of normalized.matchAll(CARRIER_NAME_PATTERN)) {
-    const words = match[1].trim().split(/\s+/);
+  for (const pattern of CARRIER_NAME_PATTERN) {
+    for (const match of content.matchAll(pattern)) {
+      const words = match[1].trim().split(/\s+/);
+      const nameWords: string[] = [];
 
-    if (CARRIER_STOP_WORDS.has(words[0].toLowerCase())) {
-      continue;
-    }
-
-    const nameWords: string[] = [];
-
-    for (const word of words) {
-      if (CARRIER_END_WORDS.has(word.toLowerCase())) {
-        break;
+      for (const word of words) {
+        if (CARRIER_END_WORDS.has(word.toLowerCase())) break;
+        nameWords.push(word);
       }
 
-      nameWords.push(word);
+      if (nameWords.length === 0) continue;
+
+      const prefix = match[0]
+        .slice(0, match[0].length - match[1].length)
+        .trim();
+
+      return `${prefix} ${nameWords.join(" ")}`.trim();
     }
-
-    if (nameWords.length === 0) continue;
-
-    const prefix = match[0]
-      .slice(0, match[0].length - match[1].length)
-      .trim();
-
-    return `${prefix} ${nameWords.join(" ")}`;
   }
 
   return null;

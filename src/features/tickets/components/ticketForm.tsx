@@ -1,7 +1,7 @@
 "use client";
 
-import { SubmitEvent, useEffect, useState, useSyncExternalStore } from "react";
-import { Bot, DollarSign, Send, SquareText, User } from "lucide-react";
+import { SubmitEvent, useState, useSyncExternalStore } from "react";
+import { DollarSign, Send, SquareText, User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/toast";
 import { extractShippingFee } from "../services/extractShippingFee";
+import { TokbokkiButton } from "@/components/layout/button";
 
 const SHIPPER_STORAGE_KEY = "delivery_shipper_name";
 
@@ -157,7 +158,7 @@ export function TicketForm() {
 
   return (
     <div className="">
-      {/* flex w-full flex-1 flex-col */}
+
       <form onSubmit={handleSubmit} className="flex w-full flex-1 flex-col">
         <Card className="mt-4 overflow-hidden rounded-[24px] border-0 bg-white py-0 shadow-none ring-0">
           <CardContent className="p-5 sm:p-6">
@@ -270,9 +271,6 @@ export function TicketForm() {
                 >
                   <DollarSign className="w-3.5 h-3.5 text-(--primary)" />
                   <span>Phí chành/ phí khác</span>
-                  <span aria-hidden="true" className="text-primary">
-                    *
-                  </span>
                 </FieldLabel>
                 <Input
                   id="ticket-other-fee"
@@ -331,6 +329,7 @@ export function TicketForm() {
             {isSubmitting ? "Đang xử lý..." : "Gửi phiếu"}
             <Send className="size-4" strokeWidth={2} />
           </Button>
+          {/* <TokbokkiButton/> */}
         </div>
       </form>
     </div>

@@ -35,7 +35,7 @@ export function Header() {
           </div>
 
           <div>
-            <TypingAnimation className="text-base font-bold tracking-tight text-white">
+            <TypingAnimation className="text-base tracking-widest font-caveat  tracking-tight text-white">
               Teokbokki
             </TypingAnimation>
 
@@ -56,46 +56,3 @@ export function Header() {
     </header>
   );
 }
-
-// return (
-//     <header className="sticky top-0 z-0 border-b bg-[var(--color-bg)]">
-//       <div className="mx-auto flex flex-col items-center h-48 max-w-lg gap-3 px-4 ">
-//         <h2 className="text-2xl font-bold leading-tight text-white">
-//           Tạo phiếu
-//         </h2>
-//         <TypingAnimation className="text-white text-[10px]">
-//           Hé nhô
-//         </TypingAnimation>
-//         <span className="text-[10px] text-white/70"></span>
-//       </div>
-//     </header>
-//   );
-//    <div className="mx-auto flex flex-col items-center justify-content h-48 max-w-lg gap-3 px-4 ">
-
-//           <TypingAnimation className="text-xl text-white font-semibold ">Teokbokki</TypingAnimation>
-//         <div className="grid grid-cols-2 gap-3 mt-2 w-full">
-//           {navigation.map((item) => {
-//             const isActive = pathName === item.href;
-//             return (
-//               <Link
-//                 key={item.href}
-//                 href={item.href}
-//                 className={`w-full whitespace-nowrap rounded-2xl px-2 py-2 text-center ${
-//                   isActive ? "header__btn-active" : "header__btn-glass"
-//                 }`}
-//               >
-//                 {item.label}
-//               </Link>
-//             );
-//           })}
-//         </div>
-
-//       </div>
-
-/* <div>
-          <TypingAnimation className="text-white text-[10px]">Hé nhô</TypingAnimation>
-          <h2 className="text-2xl font-bold leading-tight text-white">
-            Tạo phiếu
-          </h2>
-          <span className="text-[10px] text-white/70"></span>
-        </div> */

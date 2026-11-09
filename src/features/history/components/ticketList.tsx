@@ -1,4 +1,4 @@
-import { OrderTicket } from "@/types/ticket.types";
+import { AnalyzedTicket } from "@/types/ticket.types";
 import { TicketCard } from "./ticketCard";
 import { useState } from "react";
 import { TicketDetailModal } from "./ticketDetailModal";
@@ -6,11 +6,11 @@ import { TicketDetailModal } from "./ticketDetailModal";
 export type DateFilterType = "today" | "yesterday" | "last7days" | "custom";
 
 interface TicketListProps {
-  tickets: OrderTicket[];
+  tickets: AnalyzedTicket[];
 }
 
 export function TicketList({ tickets }: TicketListProps) {
-  const [selectedTicket, setSelectedTicket] = useState<OrderTicket | null>(
+  const [selectedTicket, setSelectedTicket] = useState<AnalyzedTicket | null>(
     null,
   );
   return (

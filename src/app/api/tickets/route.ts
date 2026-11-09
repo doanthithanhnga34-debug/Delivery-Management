@@ -1,3 +1,4 @@
+import { analyzeTicket } from "@/server/modules/message/extractMessage.service";
 import { getTicketSheet } from "@/server/modules/tickets/ticket.repository";
 import { createTicket } from "@/server/modules/tickets/ticket.service";
 import { NextResponse } from "next/server";
@@ -16,10 +17,13 @@ export async function GET(request: Request) {
       );
     }
     const tickets = await getTicketSheet(shipperName);
+    const analyzedTickets = tickets.map((ticket) =>
+  analyzeTicket(ticket),
+);
     return NextResponse.json({
       success: true,
-      total: tickets.length,
-      data: tickets,
+      total: analyzedTickets.length,
+      data:analyzedTickets,
     });
   } catch (error) {
     console.error("[GET_TICKETS_ERROR]", error);
@@ -33,7 +37,6 @@ export async function GET(request: Request) {
     );
   }
 }
-
 export async function POST(request: Request) {
   try {
     const body: unknown = await request.json();

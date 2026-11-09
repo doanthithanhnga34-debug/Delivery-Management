@@ -1,6 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&display=swap');
 @import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "../components/layout/layout.css";
@@ -35,6 +34,7 @@
 
 }
 @theme inline {
+   --font-caveat: "Moirai One", system-ui;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);

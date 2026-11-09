@@ -2,7 +2,7 @@ export function extractShippingFee(
   content: string,
 ): number | null {
   const pattern =
-    /(?:^|[^\p{L}])(?:phí\s*ship|tiền\s*ship|ship)\s*[:：=-]?\s*(\d+(?:[.,]\d+)*)(?:\s*(k|nghìn|ngàn))?(?![\p{L}\d])/giu;
+    /(?:^|[^\p{L}])(?:phí\s*ship|tiền\s*ship|ship)\s*[:：=-]?\s*(?:(?:\d+)\s*(?:chuyến|lượt)\s*[:：=-]?\s*)?(\d+(?:[.,]\d+)*)(?:\s*(k|nghìn|ngàn))?(?![\p{L}\d])/giu;
 
   const matches = [...content.matchAll(pattern)];
 
@@ -13,14 +13,15 @@ export function extractShippingFee(
   const rawAmount = match[1];
   const unit = match[2]?.toLowerCase();
 
+  if (!rawAmount) return null;
+
   let amount: number;
 
   if (unit) {
     amount = Number(rawAmount.replace(",", ".")) * 1000;
   } else {
-    const normalized = rawAmount.replace(/[.,]/g, "");
+    amount = Number(rawAmount.replace(/[.,]/g, ""));
 
-    amount = Number(normalized);
     if (amount > 0 && amount < 1000) {
       amount *= 1000;
     }

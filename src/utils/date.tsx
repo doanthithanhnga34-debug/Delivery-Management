@@ -107,3 +107,23 @@ export function getTicketDateKey(value: string): string {
 
   return `${year}-${month}-${day}`;
 }
+export function formatDate(dateKey: string): string {
+  const [year, month, day] = dateKey.split("-");
+  return `${day}/${month}/${year}`;
+}
+
+export function formatDateTime(value: string): string {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Không xác định";
+  }
+
+  return new Intl.DateTimeFormat("vi-VN", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(date);
+}

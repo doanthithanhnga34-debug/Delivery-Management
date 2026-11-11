@@ -1,16 +1,16 @@
 import { extractAddresses } from "../address/addressExtractor.service";
 
-interface CarrierInfo{
-    name:string | null;
-    address:string | null;
-    hasCarrier:boolean
+interface CarrierInfo {
+  name: string | null;
+  address: string | null;
+  hasCarrier: boolean;
 }
-const CARRIER_NAME_PATTERN =[
-/\b(?:nhà\s*xe|chành\s*xe)\s+([\p{L}]+(?:\s+[\p{L}]+){0,3})/giu,
-    /\b(?:gửi\s*xe|gởi\s*xe)\s+([\p{L}]+(?:\s+[\p{L}]+){0,3})/giu,
-    /\bxe\s+([\p{L}]+(?:\s+[\p{L}]+){0,3})/giu,
-]
- 
+const CARRIER_NAME_PATTERN = [
+  /\b(?:nhà\s*xe|chành\s*xe)\s+([\p{L}]+(?:\s+[\p{L}]+){0,3})/giu,
+  /\b(?:gửi\s*xe|gởi\s*xe)\s+([\p{L}]+(?:\s+[\p{L}]+){0,3})/giu,
+  /\bxe\s+([\p{L}]+(?:\s+[\p{L}]+){0,3})/giu,
+];
+
 const CARRIER_STOP_WORDS = new Set([
   "check",
   "chạy",
@@ -41,9 +41,16 @@ const CARRIER_END_WORDS = new Set([
   "ty",
   "tnhh",
   "cccd",
+  "không"
 ]);
 
+function isStationReference(content: string, matchIndex: number): boolean {
+  const before = content
+    .slice(Math.max(0, matchIndex - 20), matchIndex)
+    .toLowerCase();
 
+  return /bến\s*$/.test(before);
+}
 export function extractCarrierInfo(content: string): CarrierInfo {
   const addresses = extractAddresses(content);
 
@@ -60,9 +67,11 @@ export function extractCarrierInfo(content: string): CarrierInfo {
 }
 
 function extractCarrierName(content: string): string | null {
-
   for (const pattern of CARRIER_NAME_PATTERN) {
     for (const match of content.matchAll(pattern)) {
+      if (isStationReference(content, match.index)) {
+        continue;
+      }
       const words = match[1].trim().split(/\s+/);
       const nameWords: string[] = [];
 

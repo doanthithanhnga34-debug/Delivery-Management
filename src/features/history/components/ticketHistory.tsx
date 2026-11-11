@@ -1,7 +1,7 @@
 "use client";
 
 import { Calendar, DollarSign, ImageIcon, TrendingUp } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { DatePickerInput } from "./filter/dateInputPicker";
 
 import { format, parseISO, subDays } from "date-fns";
@@ -13,6 +13,9 @@ import { useShipperName } from "../hooks/useShipperName";
 import Loading from "@/app/(shipper)/history/loading";
 
 import { useTicketHistory } from "../hooks/useTicketHistory";
+import { DailyReportExport } from "@/features/reports/components/dailyReport";
+import { toPng } from "html-to-image";
+import { DailyReportTable } from "@/features/reports/dailyReportTable";
 
 const filterOptions: {
   value: DateFilterType;
@@ -78,10 +81,29 @@ export function TicketHistory({ today }: { today: string }) {
     return filteredTickets.reduce((sum, o) => sum + (o.shippingFee || 0), 0);
   }, [filteredTickets]);
 
+  const reportRef = useRef<HTMLDivElement | null>(null);
+  async function handleExport() {
+    if (!reportRef.current) return;
+
+    const dataUrl = await toPng(reportRef.current, {
+      cacheBust: true,
+      pixelRatio: 2,
+      backgroundColor: "#ffffff",
+    });
+
+    const link = document.createElement("a");
+    link.download = "bao-cao-phieu-giao-hang.png";
+    link.href = dataUrl;
+    link.click();
+  }
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white px-4 pt-3">
       <div className="space-y-2">
-        <button className="flex justify-between items-center rounded-lg gap-2 w-full p-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-500/25">
+        <button
+          onClick={handleExport}
+          className="flex justify-between items-center rounded-lg gap-2 w-full p-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-500/25"
+        >
           <div>
             <ImageIcon className="w-4 h-4 text-white" />
           </div>
@@ -92,6 +114,15 @@ export function TicketHistory({ today }: { today: string }) {
             Xuất ảnh
           </span>
         </button>
+        <div className="absolute -left-[99999px] top-0">
+          <div ref={reportRef}>
+    <DailyReportTable
+      tickets={filteredTickets}
+      shipperName={shipperName}
+       reportDate={format(selectedDate, "dd/MM/yyyy")}
+    />
+  </div>
+        </div>
         <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 px-1">
           <span className="font-semibold flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300">
             <Calendar className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
@@ -162,6 +193,7 @@ export function TicketHistory({ today }: { today: string }) {
 
         {/* Ticket Feed */}
       </div>
+
       {!shipperName ? (
         <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-zinc-500">
           Vui lòng nhập tên shipper tại trang Tạo phiếu

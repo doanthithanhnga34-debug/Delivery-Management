@@ -5,7 +5,7 @@ import { TicketPayment } from "@/types/ticket.types";
 
 
 const PAYMENT_PATTERN =
-  /(?:^|[^\p{L}])(thu\s*khách|ck|chuyển\s*khoản|công\s*nợ)\s*(sau\s*)?[:：-]?\s*(\d+(?:[.,]\d+)*(?:\s*(?:k|nghìn|ngàn))?)/giu;
+  /(?:^|[^\p{L}])(thu\s*khách|ck|chuyển\s*khoản|công\s*nợ)\s*(sau\s*)?[:：-]?\s*(\d+(?:[.,]\d+)*(?:\s*(?:k|tr|trịu|triệu|nghìn|ngàn))?)/giu;
 
 export function extractPaymentInfo(
   content: string,

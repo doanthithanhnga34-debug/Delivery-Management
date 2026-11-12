@@ -39,7 +39,7 @@ export function DailyReportTable({
             <th className="border border-zinc-300 p-3 text-left">
               Địa chỉ giao hàng
             </th>
-            <th className="border border-zinc-300 p-3 text-left">Payment</th>
+            <th className="border border-zinc-300 p-3 text-left">Thanh toán</th>
             <th className="border border-zinc-300 p-3 text-right">Phí ship</th>
             <th className="border border-zinc-300 p-3 text-right">
               Phí chành / khác
@@ -62,14 +62,15 @@ export function DailyReportTable({
                 {ticket.content}
               </td>
               <td className="border border-zinc-300 p-3 whitespace-pre-wrap break-words max-w-[250px]">
-                {ticket.analysis.deliveryAddress?.trim() ||
+                {(ticket.analysis.carrier.hasCarrier &&
                   [
                     ticket.analysis.carrier.name,
                     ticket.analysis.carrier.address,
                   ]
                     .filter((value) => value?.trim())
-                    .join(" - ") ||
-                 ticket.content}
+                    .join(" - ")) ||
+                  ticket.analysis.deliveryAddress?.trim() ||
+                  ticket.content}
               </td>
               <td className="border border-zinc-300 p-3">
                 {ticket.analysis.payment

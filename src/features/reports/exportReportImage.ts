@@ -11,7 +11,8 @@ const height = Math.ceil(element.scrollHeight);
  if (!width || !height) {
     throw new Error("Không tìm thấy nội dung báo cáo.");
   }
-const pixelRatio = height <=5000 ? 2:height<=9000 ? 1.5:1;
+const pixelRatio = 2;
+// const pixelRatio = height <=5000 ? 2:height<=9000 ? 1.5:1;
 const outputWidth = Math.ceil(width * pixelRatio);
  const outputHeight = Math.ceil(height * pixelRatio);
  if(outputWidth>MAX_IMAGE_WIDTH || outputHeight > MAX_IMAGE_HEIGHT || outputHeight * outputWidth >MAX_IMAGE_PIXELS){

@@ -5,7 +5,8 @@ import { analyzeShippingAddresses } from "@/server/modules/message/extractMessag
 
 const samples = [
   `Ly Na 0364532423 GỬI ĐÚNG HÀNG CHO KHÁCH 38 phan chu trinh phường 9 đà lat -20kg bgpm loại 2 - 1.800 CK 1.800 ship 20 Xe Thành Bưởi KH KHÔNG LẤY HD VAT`,
-  `GIAO TRƯỚC 11h30 Hồng Như bến xe mỹ phước 1 .bến cát bình dương Sdt 0948062545 -20kg sốt trong - 760 -2 Nước sốt gà chiên vị ngọt Chungwoo 2.1kg - 296 -1 Nước sốt gà chiên vị cay Chungwoo 2.1kg-152 ck 1.208.000 ship 20  Xe thiện dương 95 bắc hải p15 quận 10 0945155595`
+  `GIAO TRƯỚC 11h30 Hồng Như bến xe mỹ phước 1 .bến cát bình dương Sdt 0948062545 -20kg sốt trong - 760 -2 Nước sốt gà chiên vị ngọt Chungwoo 2.1kg - 296 -1 Nước sốt gà chiên vị cay Chungwoo 2.1kg-152 ck 1.208.000 ship 20  Xe thiện dương 95 bắc hải p15 quận 10 0945155595`,
+  `Hanh Ngo 0782741882 Số 34, Đường Cô Giang quận 1, Thành phố Hồ Chí Minh, Việt Nam 4 bịch Bánh gạo thỏi TBK 500g - 152 ship 35 ck 187 -------------------------- Tên công ty: CÔNG TY TNHH SINASEAN VIỆT NAM Địa chỉ: Số 34, Đường Số 10, Khu Dân Cư Him Lam, Phường Tân Hưng, Thành phố Hồ Chí Minh, Việt Nam MST: 0313254387 Mail: acc.sinasean@gmail.com Đại diện: Bà Võ Hoàng Bảo Linh Chức vụ: Giám đốc`
 ];
 
 

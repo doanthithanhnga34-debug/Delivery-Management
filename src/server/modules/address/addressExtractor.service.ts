@@ -45,7 +45,6 @@ const ADDRESS_START_PATTERNS: RegExp[] = [
 const AREA_HINT =
   /(?:\b(?:phường|phuong|quận|quan|huyện|xã|tỉnh|thành\s*phố|kdc|kđt|chợ|ấp|đường|phố|hẻm|bến\s*xe|bình\s*dương|bến\s*cát|khu\s*dân\s*cư)\b|\b[pq]\.?\s*\d{1,2}\b|\b(?:q|p)\.?\s*[\p{Lu}][\p{L}]+|\b(?:bình\s*thạnh|gò\s*vấp|phú\s*nhuận|thủ\s*đức|hóc\s*môn|cam\s*ranh|gia\s*lai|đồng\s*nai|củ\s*chi)\b)/iu;
 
-
 function cleanText(text: string): string {
   return text
     .normalize("NFC")
@@ -137,7 +136,7 @@ function trimAtEndMarkers(text: string): string {
 
   return cleanText(prefix.replace(new RegExp(PHONE.source, "gu"), " "));
 }
-  function removeRecipientSuffix(text: string): string {
+function removeRecipientSuffix(text: string): string {
   const RECIPIENT_SUFFIX =
     /(?:[\s,;:–-]+)(?:anh|chị|em|cô|chú|bác)\s+[\p{L}]+(?:\s+[\p{L}]+){0,1}\s*$/iu;
 
@@ -180,8 +179,8 @@ function extractDelivery(section: string): string | null {
     /\s+(?:tên\s+(?:khách|người\s*nhận)|người\s*nhận)\s*[:：]?\s*.+$/iu,
     "",
   );
-
   address = removeRecipientSuffix(address);
+
   return looksLikeAddress(address) ? address : null;
 }
 

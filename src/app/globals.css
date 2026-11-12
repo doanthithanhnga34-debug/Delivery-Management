@@ -10,8 +10,10 @@
 :root {
   color-scheme: light;
   /* --color-bg: #E92332; */
-  --primary: #7cb7f1;
-  --color-bg: #2d79c5;
+  /* --primary: #7cb7f1; */
+  /* --color-bg: #2d79c5; */
+  --primary:#2563EB;
+  --color-bg: #2563EB;
   --hover-bg:#0b66c2;
   --background: #f5f7fb;
   --foreground: #172033;

@@ -17,9 +17,10 @@ export function TicketList({ tickets }: TicketListProps) {
     <>
       <div
         className="
-          mt-3 min-h-0 flex-1
+          min-h-0 flex-1
           overflow-y-auto overscroll-contain
-          pb-6
+          mt-3 pb-6
+          [scrollbar-width:none]
         "
       >
         <div className="space-y-3">

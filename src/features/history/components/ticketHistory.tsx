@@ -184,7 +184,7 @@ export function TicketHistory({ today }: { today: string }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white px-4 pt-3">
-      <div className="space-y-2">
+      <div className="shrink-0 space-y-2">
         <button
           onClick={handleExportAndShare}
           disabled={
@@ -286,7 +286,7 @@ export function TicketHistory({ today }: { today: string }) {
       </div>
 
       {!shipperName ? (
-        <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-zinc-500">
+        <div className="flex min-h-0 flex-1 items-center justify-center text-center text-sm text-zinc-500">
           Vui lòng nhập tên shipper tại trang Tạo phiếu
         </div>
       ) : error ? (

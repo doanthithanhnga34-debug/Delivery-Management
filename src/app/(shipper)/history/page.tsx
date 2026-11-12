@@ -21,9 +21,8 @@ export default  function HistoryPage() {
 
   return (
     <Suspense fallback={<></>}>
-      <div className="flex min-h-0 w-full flex-1 flex-col">
+    
       <HistoryContent />
-      </div>
     </Suspense>
   );
 }

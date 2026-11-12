@@ -42,7 +42,7 @@ export async function saveTicketToSheet(input: SaveTicketInput) {
   const response = await sheets.spreadsheets.values.append({
     spreadsheetId,
     range: `'${escapedName}'!A:L`,
-    valueInputOption: "USER_ENTERED",
+    valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
     requestBody: {
       values: [rows],

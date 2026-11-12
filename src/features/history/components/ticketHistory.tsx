@@ -14,8 +14,9 @@ import Loading from "@/app/(shipper)/history/loading";
 
 import { useTicketHistory } from "../hooks/useTicketHistory";
 import { DailyReportExport } from "@/features/reports/components/dailyReport";
-import { toPng } from "html-to-image";
+import { toBlob, toPng } from "html-to-image";
 import { DailyReportTable } from "@/features/reports/dailyReportTable";
+import { toast } from "@/components/ui/toast";
 
 const filterOptions: {
   value: DateFilterType;
@@ -34,6 +35,10 @@ export function TicketHistory({ today }: { today: string }) {
 
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [dateFilter, setDateFilter] = useState<DateFilterType>("today");
+  const reportRef = useRef<HTMLDivElement | null>(null);
+
+  const [reportFile, setReportFile] = useState<File | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   const filteredTickets = useMemo(() => {
     const todayDate = parseISO(today);
@@ -81,27 +86,113 @@ export function TicketHistory({ today }: { today: string }) {
     return filteredTickets.reduce((sum, o) => sum + (o.shippingFee || 0), 0);
   }, [filteredTickets]);
 
-  const reportRef = useRef<HTMLDivElement | null>(null);
-  async function handleExport() {
-    if (!reportRef.current) return;
+  async function handleExportAndShare() {
+    if (!reportRef.current || isExporting) return;
 
-    const dataUrl = await toPng(reportRef.current, {
-      cacheBust: true,
-      pixelRatio: 2,
-      backgroundColor: "#ffffff",
-    });
+    if (filteredTickets.length === 0) {
+      toast.add({
+        type: "warning",
+        title: "Không có dữ liệu",
+        description: "Không có phiếu giao hàng để xuất báo cáo.",
+      });
+      return;
+    }
 
-    const link = document.createElement("a");
-    link.download = "bao-cao-phieu-giao-hang.png";
-    link.href = dataUrl;
-    link.click();
+    setIsExporting(true);
+
+    try {
+      await document.fonts.ready;
+
+      const element = reportRef.current;
+
+      const blob = await toBlob(element, {
+        backgroundColor: "#ffffff",
+        cacheBust: true,
+        pixelRatio: 1,
+        width: element.scrollWidth,
+        height: element.scrollHeight,
+      });
+
+      if (!blob) {
+        throw new Error("Không thể tạo ảnh báo cáo.");
+      }
+
+      const safeShipperName = shipperName
+        .trim()
+        .replace(/[^\p{L}\p{N}-]+/gu, "-");
+
+      const filename = `bao-cao-${safeShipperName}-${today}.png`;
+
+      const file = new File([blob], filename, {
+        type: "image/png",
+      });
+
+      if (
+        typeof navigator.share === "function" &&
+        typeof navigator.canShare === "function" &&
+        navigator.canShare({ files: [file] })
+      ) {
+        try {
+          await navigator.share({
+            files: [file],
+          });
+
+          return;
+        } catch (error) {
+          if (error instanceof DOMException && error.name === "AbortError") {
+            return;
+          }
+
+          console.warn("[SHARE_REPORT_ERROR]", error);
+        }
+      }
+      const url = URL.createObjectURL(file);
+
+      try {
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } finally {
+        window.setTimeout(() => {
+          URL.revokeObjectURL(url);
+        }, 60_000);
+      }
+
+      toast.add({
+        type: "info",
+        title: "Đã tạo ảnh báo cáo",
+        description:
+          "Không thể mở chia sẻ trực tiếp. Hãy chọn ảnh đã tải trong Zalo để gửi.",
+      });
+    } catch (error) {
+      console.error("[EXPORT_REPORT_ERROR]", error);
+
+      toast.add({
+        type: "error",
+        title: "Xuất báo cáo thất bại",
+        description:
+          error instanceof Error ? error.message : "Không thể tạo ảnh báo cáo.",
+      });
+    } finally {
+      setIsExporting(false);
+    }
   }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white px-4 pt-3">
       <div className="space-y-2">
         <button
-          onClick={handleExport}
+          onClick={handleExportAndShare}
+          disabled={
+            isExporting ||
+            isLoading ||
+            !shipperName ||
+            filteredTickets.length === 0
+          }
           className="flex justify-between items-center rounded-lg gap-2 w-full p-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-500/25"
         >
           <div>
@@ -116,12 +207,12 @@ export function TicketHistory({ today }: { today: string }) {
         </button>
         <div className="absolute -left-[99999px] top-0">
           <div ref={reportRef}>
-    <DailyReportTable
-      tickets={filteredTickets}
-      shipperName={shipperName}
-       reportDate={format(selectedDate, "dd/MM/yyyy")}
-    />
-  </div>
+            <DailyReportTable
+              tickets={filteredTickets}
+              shipperName={shipperName}
+              reportDate={format(selectedDate, "dd/MM/yyyy")}
+            />
+          </div>
         </div>
         <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 px-1">
           <span className="font-semibold flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300">

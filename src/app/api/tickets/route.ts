@@ -17,13 +17,11 @@ export async function GET(request: Request) {
       );
     }
     const tickets = await getTicketSheet(shipperName);
-    const analyzedTickets = tickets.map((ticket) =>
-  analyzeTicket(ticket),
-);
+    const analyzedTickets = tickets.map((ticket) => analyzeTicket(ticket));
     return NextResponse.json({
       success: true,
       total: analyzedTickets.length,
-      data:analyzedTickets,
+      data: analyzedTickets,
     });
   } catch (error) {
     console.error("[GET_TICKETS_ERROR]", error);
@@ -61,7 +59,9 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+    const deliveryDate = new Date().toISOString();
 
+    console.log("[CREATE_TICKET] Delivery Date:", deliveryDate);
     const result = await createTicket({
       shipperName: body.shipperName,
       content: body.content,
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
       otherFee: body.otherFee,
       deliveryDate: new Date().toISOString(),
     });
-
+    console.log("Result log", result);
     return NextResponse.json(
       {
         success: true,

@@ -40,7 +40,7 @@ export function extractPaymentInfo(
 
   return {
     type: "bank_transfer",
-    label: isLater ? "CK sau" : "Chuyển khoản (CK)",
+    label: isLater ? "CK sau" : "CK",
     amount,
   };
 }

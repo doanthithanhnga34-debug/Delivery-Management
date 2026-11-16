@@ -6,18 +6,17 @@ interface ShipperLayoutProps {
   children: ReactNode;
 }
 export function ShipperLayout({ children }: ShipperLayoutProps) {
- return (
-    <div className="fixed inset-0 flex flex-col overflow-hidden bg-white">
-      <div className="relative z-20 shrink-0">
+  return (
+    <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-white">
+      <div className="shrink-0">
         <Header />
       </div>
 
       <main
         className="
-          relative mx-auto -mt-5
+          relative z-10 mx-auto -mt-5
           flex min-h-0 w-full max-w-lg flex-1 flex-col
           overflow-hidden rounded-t-[28px] bg-white
-          pb-[calc(72px+env(safe-area-inset-bottom))]
         "
       >
         {children}
@@ -26,23 +25,4 @@ export function ShipperLayout({ children }: ShipperLayoutProps) {
       <BottomNav />
     </div>
   );
-  // return (
-  //   <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-white">
-  //     <div className="shrink-0">
-  //       <Header />
-  //     </div>
-
-  //     <main
-  //       className="
-  //         relative z-10 mx-auto -mt-5
-  //         flex min-h-0 w-full max-w-lg flex-1 flex-col
-  //         overflow-hidden rounded-t-[28px] bg-white
-  //       "
-  //     >
-  //       {children}
-  //     </main>
-
-  //     <BottomNav />
-  //   </div>
-  // );
 }

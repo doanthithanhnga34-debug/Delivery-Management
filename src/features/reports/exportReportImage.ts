@@ -1,5 +1,8 @@
 import { toBlob } from "html-to-image";
 
+import { toPng } from "html-to-image";
+
+
 const MAX_IMAGE_WIDTH = 16000;
 const MAX_IMAGE_HEIGHT = 16000;
 const MAX_IMAGE_PIXELS = 64_000_000; 
@@ -22,71 +25,67 @@ export async function exportReportImage(
   element: HTMLElement,
   filename: string
 ): Promise<void> {
-  
   await document.fonts.ready;
-  await waitForImages(element);
 
+  // 1. Tạo một bản sao ẩn ngoài màn hình với chiều rộng chuẩn Desktop (1400px)
+  // Giúp bảng không bao giờ bị co chữ hay bóp cột khi xuất trên điện thoại/màn nhỏ
+  const clone = element.cloneNode(true) as HTMLElement;
+  const container = document.createElement("div");
 
-  await new Promise((resolve) => setTimeout(resolve, 100));
-
-  const rect = element.getBoundingClientRect();
-  const width = Math.ceil(element.scrollWidth || rect.width);
-  const height = Math.ceil(element.scrollHeight || rect.height);
-
-  if (!width || !height) {
-    throw new Error("Không tìm thấy nội dung báo cáo.");
-  }
-
- 
-  const totalBasePixels = width * height;
-  let pixelRatio = 3;
-  if (totalBasePixels * 9 > MAX_IMAGE_PIXELS) {
-    pixelRatio = 2;
-  }
-  if (totalBasePixels * 4 > MAX_IMAGE_PIXELS) {
-    pixelRatio = 1.5;
-  }
-
-  const outputWidth = Math.ceil(width * pixelRatio);
-  const outputHeight = Math.ceil(height * pixelRatio);
-
-  if (
-    outputWidth > MAX_IMAGE_WIDTH ||
-    outputHeight > MAX_IMAGE_HEIGHT ||
-    outputHeight * outputWidth > MAX_IMAGE_PIXELS
-  ) {
-    throw new Error("Báo cáo quá dài để xuất thành một ảnh trên thiết bị này.");
-  }
-
-  // Xuất file PNG (lossless - không nén làm mờ chữ như JPEG)
-  const blob = await toBlob(element, {
+  Object.assign(container.style, {
+    position: "fixed",
+    left: "-9999px",
+    top: "0",
+    width: "1400px", // Ép chiều rộng cố định 1400px để cột và chữ luôn thoáng, to rõ
     backgroundColor: "#ffffff",
-    pixelRatio,
-    cacheBust: true,
-    type: "image/png",
-    quality: 1,
-    // Khắc phục lỗi font chữ bị mảnh hoặc lệch khi scale lớn
-    style: {
-      transform: "scale(1)",
-      transformOrigin: "top left",
-    },
+    zIndex: "-1",
   });
 
-  if (!blob) {
-    throw new Error("Không thể tạo file ảnh báo cáo.");
-  }
+  // 2. Tăng độ sắc nét cho font chữ bên trong bản sao
+  Object.assign(clone.style, {
+    width: "1400px",
+    maxWidth: "1400px",
+    padding: "32px",
+    backgroundColor: "#ffffff",
+    WebkitFontSmoothing: "antialiased",
+    MozOsxFontSmoothing: "grayscale",
+    textRendering: "geometricPrecision",
+  });
 
-  const url = URL.createObjectURL(blob);
+  // Ép cỡ chữ tối thiểu trong bảng lên 15px - 16px để khi gửi Zalo không bị vỡ chữ
+  clone.querySelectorAll("td, th").forEach((cell) => {
+    const htmlCell = cell as HTMLElement;
+    htmlCell.style.fontSize = "15px";
+    htmlCell.style.lineHeight = "1.5";
+    htmlCell.style.color = "#111827"; // Đen đậm thay vì xám nhạt giúp tương phản nét hơn
+  });
+
+  container.appendChild(clone);
+  document.body.appendChild(container);
+
   try {
-    const link = document.createElement("a");
-    link.href = url;
-    // Đảm bảo đuôi file luôn là .png để giữ chất lượng gốc không nén
-    link.download = filename.endsWith(".png") ? filename : `${filename}.png`;
+    // Chờ trình duyệt render xong bản sao
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
+    // 3. Xuất PNG với pixelRatio = 3 (Tạo ra ảnh rộng tới 4200px - chuẩn 4K siêu nét)
+    const dataUrl = await toPng(clone, {
+      backgroundColor: "#ffffff",
+      pixelRatio: 3,
+      cacheBust: true,
+      width: 1400,
+      height: clone.scrollHeight,
+    });
+
+    // 4. Tải file về máy
+    const link = document.createElement("a");
+    link.href = dataUrl;
+    link.download = filename.endsWith(".png") ? filename : `${filename}.png`;
     document.body.appendChild(link);
     link.click();
     link.remove();
   } finally {
-    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    // Dọn dẹp bản sao khỏi DOM
+    document.body.removeChild(container);
   }
 }
+

@@ -38,7 +38,12 @@ const filterOptions: {
 export function TicketHistory({ today }: { today: string }) {
   const shipperName = useShipperName();
 
-  const { tickets, isLoading, error } = useTicketHistory(shipperName);
+  const {
+  tickets,
+  isLoading,
+  error,
+  refetch,
+} = useTicketHistory(shipperName);
 
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [dateFilter, setDateFilter] = useState<DateFilterType>("today");
@@ -300,8 +305,8 @@ export function TicketHistory({ today }: { today: string }) {
             </span>
           </div>
         </div>
-      ) : (
-        <TicketList tickets={filteredTickets} />
+      ) : ( 
+        <TicketList tickets={filteredTickets}  onRefresh={refetch} />
       )}
     </div>
   );

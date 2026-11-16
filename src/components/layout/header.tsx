@@ -17,6 +17,9 @@ const navItems = [
 ];
 export function Header() {
   const [isDarkMode, setIsDarkMode] = useState(Boolean);
+  function handleRefresh(){
+    window.location.reload()
+  }
 
   return (
  <header
@@ -30,7 +33,7 @@ export function Header() {
           {/* <CloudShader className="absolute inset-0" /> */}
       <div className="mx-auto flex max-w-lg items-center justify-between gap-2 px-5 py-2 z-100">
         <div className="flex items-center gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm">
+          <div onClick={handleRefresh} className="cursor-pointer flex size-10 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm">
             <Truck className="size-5 text-primary" />
           </div>
 

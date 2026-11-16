@@ -23,6 +23,7 @@ import { DailyReportExport } from "@/features/reports/components/dailyReport";
 import { toBlob, toPng } from "html-to-image";
 import { DailyReportTable } from "@/features/reports/dailyReportTable";
 import { toast } from "@/components/ui/toast";
+import { createReportImage } from "@/features/reports/exportReportImage";
 
 const filterOptions: {
   value: DateFilterType;
@@ -111,27 +112,13 @@ export function TicketHistory({ today }: { today: string }) {
 
       const element = reportRef.current;
 
-      const blob = await toBlob(element, {
-        backgroundColor: "#ffffff",
-        cacheBust: true,
-        pixelRatio: 1,
-        width: element.scrollWidth,
-        height: element.scrollHeight,
-      });
-
-      if (!blob) {
-        throw new Error("Không thể tạo ảnh báo cáo.");
-      }
-
       const safeShipperName = shipperName
         .trim()
         .replace(/[^\p{L}\p{N}-]+/gu, "-");
 
       const filename = `bao-cao-${safeShipperName}-${today}.png`;
 
-      const file = new File([blob], filename, {
-        type: "image/png",
-      });
+      const file = await createReportImage(element, filename);
 
       if (
         typeof navigator.share === "function" &&

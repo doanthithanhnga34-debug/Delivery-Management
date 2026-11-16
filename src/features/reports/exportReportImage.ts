@@ -1,10 +1,13 @@
 import { toBlob } from "html-to-image";
 
 import { toPng } from "html-to-image";
+import html2canvas from "html2canvas-pro";
 
 const MAX_IMAGE_WIDTH = 16000;
 const MAX_IMAGE_HEIGHT = 16000;
 const MAX_IMAGE_PIXELS = 64_000_000;
+// const MAX_IMAGE_PIXELS = 32_000_000;
+const MAX_IMAGE_SIDE = 12_000;
 
 async function waitForImages(element: HTMLElement): Promise<void> {
   const images = Array.from(element.querySelectorAll("img"));
@@ -18,76 +21,64 @@ async function waitForImages(element: HTMLElement): Promise<void> {
     }),
   );
 }
+export async function createReportImage(
+  element: HTMLElement,
+  filename: string,
+): Promise<File> {
+  await document.fonts.ready;
 
-// export async function exportReportImage(
-//   element: HTMLElement,
-//   filename: string,
-// ): Promise<void> {
-//   await document.fonts.ready;
+  const width = Math.ceil(element.scrollWidth);
+  const height = Math.ceil(element.scrollHeight);
 
-//   // 1. Tạo một bản sao ẩn ngoài màn hình với chiều rộng chuẩn Desktop (1400px)
-//   // Giúp bảng không bao giờ bị co chữ hay bóp cột khi xuất trên điện thoại/màn nhỏ
-//   const clone = element.cloneNode(true) as HTMLElement;
-//   const container = document.createElement("div");
+  if (!width || !height) {
+    throw new Error("Không tìm thấy nội dung báo cáo.");
+  }
 
-//   Object.assign(container.style, {
-//     position: "fixed",
-//     left: "-9999px",
-//     top: "0",
-//     width: "1400px", // Ép chiều rộng cố định 1400px để cột và chữ luôn thoáng, to rõ
-//     backgroundColor: "#ffffff",
-//     zIndex: "-1",
-//   });
+  // Tính scale dựa trên kích thước thực tế
+  const scale = Math.min(
+    3,
+    MAX_IMAGE_SIDE / width,
+    MAX_IMAGE_SIDE / height,
+    Math.sqrt(MAX_IMAGE_PIXELS / (width * height)),
+  );
 
-//   // 2. Tăng độ sắc nét cho font chữ bên trong bản sao
-//   Object.assign(clone.style, {
-//     width: "1400px",
-//     maxWidth: "1400px",
-//     padding: "32px",
-//     backgroundColor: "#ffffff",
-//     WebkitFontSmoothing: "antialiased",
-//     MozOsxFontSmoothing: "grayscale",
-//     textRendering: "geometricPrecision",
-//   });
+  if (scale < 1) {
+    throw new Error(
+      "Báo cáo quá dài để xuất thành một ảnh trên thiết bị này.",
+    );
+  }
 
-//   // Ép cỡ chữ tối thiểu trong bảng lên 15px - 16px để khi gửi Zalo không bị vỡ chữ
-//   clone.querySelectorAll("td, th").forEach((cell) => {
-//     const htmlCell = cell as HTMLElement;
-//     htmlCell.style.fontSize = "15px";
-//     htmlCell.style.lineHeight = "1.5";
-//     htmlCell.style.color = "#111827"; // Đen đậm thay vì xám nhạt giúp tương phản nét hơn
-//   });
+  const canvas = await html2canvas(element, {
+    scale,
+    backgroundColor: "#ffffff",
+    useCORS: true,
+    logging: false,
+    width,
+    height,
+    windowWidth: Math.max(1400, width),
+  });
 
-//   container.appendChild(clone);
-//   document.body.appendChild(container);
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((result) => {
+      if (result) {
+        resolve(result);
+      } else {
+        reject(new Error("Không thể tạo file PNG."));
+      }
+    }, "image/png");
+  });
 
-//   try {
-//     // Chờ trình duyệt render xong bản sao
-//     await new Promise((resolve) => setTimeout(resolve, 100));
+  // Giải phóng bộ nhớ canvas
+  canvas.width = 0;
+  canvas.height = 0;
 
-//     // 3. Xuất PNG với pixelRatio = 3 (Tạo ra ảnh rộng tới 4200px - chuẩn 4K siêu nét)
-//     const dataUrl = await toPng(clone, {
-//       backgroundColor: "#ffffff",
-//       pixelRatio: 3,
-//       cacheBust: true,
-//       width: 1400,
-//       height: clone.scrollHeight,
-//     });
+  return new File(
+    [blob],
+    filename.endsWith(".png") ? filename : `${filename}.png`,
+    { type: "image/png" },
+  );
+}
 
-//     // 4. Tải file về máy
-//     const link = document.createElement("a");
-//     link.href = dataUrl;
-//     link.download = filename.endsWith(".png") ? filename : `${filename}.png`;
-//     document.body.appendChild(link);
-//     link.click();
-//     link.remove();
-//   } finally {
-//     // Dọn dẹp bản sao khỏi DOM
-//     document.body.removeChild(container);
-//   }
-// }
-
-import html2canvas from "html2canvas-pro";
 
 export async function exportReportImage(
   element: HTMLElement,

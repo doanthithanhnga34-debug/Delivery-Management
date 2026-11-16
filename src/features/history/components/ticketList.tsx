@@ -32,21 +32,30 @@ export function TicketList({ tickets, onRefresh, }: TicketListProps) {
         className="
           relative mt-3 min-h-0 flex-1
           overflow-y-auto overscroll-contain
-          touch-pan-y pb-6
+          pb-6 touch-pan-y
           [scrollbar-width:none]
         "
       >
         <div
-          className="flex items-center justify-center overflow-hidden"
-          style={{
-            height: isRefreshing ? 50 : pullPosition,
-          }}
+          className="pointer-events-none sticky top-0 z-10 flex h-0 justify-center"
+          aria-hidden="true"
         >
-          <RefreshCw
-            className={`size-5 text-blue-600 ${
-              isRefreshing ? "animate-spin" : ""
-            }`}
-          />
+          {(pullPosition > 0 || isRefreshing) && (
+            <div
+              className="flex size-10 items-center justify-center rounded-full bg-white shadow-md"
+              style={{
+                transform: `translateY(${
+                  isRefreshing ? 12 : Math.min(pullPosition / 3, 40)
+                }px)`,
+              }}
+            >
+              <RefreshCw
+                className={`size-5 text-blue-600 ${
+                  isRefreshing ? "animate-spin" : ""
+                }`}
+              />
+            </div>
+          )}
         </div>
 
         <div className="space-y-3">

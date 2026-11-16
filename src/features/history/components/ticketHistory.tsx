@@ -38,12 +38,7 @@ const filterOptions: {
 export function TicketHistory({ today }: { today: string }) {
   const shipperName = useShipperName();
 
-  const {
-  tickets,
-  isLoading,
-  error,
-  refetch,
-} = useTicketHistory(shipperName);
+  const { tickets, isLoading, error, refetch } = useTicketHistory(shipperName);
 
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [dateFilter, setDateFilter] = useState<DateFilterType>("today");
@@ -284,29 +279,19 @@ export function TicketHistory({ today }: { today: string }) {
       </div>
 
       {!shipperName ? (
-        <div className="flex min-h-0 flex-1 items-center justify-center text-center text-sm text-zinc-500">
+        <div className="flex min-h-0 flex-1 items-center justify-center">
           Vui lòng nhập tên shipper tại trang Tạo phiếu
         </div>
-      ) : error ? (
-        <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-red-600">
+      ) : error && tickets.length === 0 ? (
+        <div className="flex min-h-0 flex-1 items-center justify-center text-red-600">
           {error}
         </div>
-      ) : isLoading ? (
+      ) : isLoading && tickets.length === 0 ? (
         <div className="flex min-h-0 flex-1 items-center justify-center">
           <Loading />
         </div>
-      ) : filteredTickets.length === 0 ? (
-        <div className="flex min-h-0 flex-1 items-center justify-center">
-          <div className="flex flex-col items-center gap-2 rounded-xl border border-zinc-100 bg-white p-6 text-center shadow-sm">
-            <Siren className="size-8 text-red-500" />
-
-            <span className="text-sm font-medium text-zinc-600">
-              Hôm nay không có phiếu gì nè!
-            </span>
-          </div>
-        </div>
-      ) : ( 
-        <TicketList tickets={filteredTickets}  onRefresh={refetch} />
+      ) : (
+        <TicketList tickets={filteredTickets} onRefresh={refetch} />
       )}
     </div>
   );

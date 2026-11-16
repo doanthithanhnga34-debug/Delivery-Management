@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/toast";
 import { extractShippingFee } from "../services/extractShippingFee";
 import { TokbokkiButton } from "@/components/layout/button";
+import { saveShipperName, useShipperName } from "@/features/history/hooks/useShipperName";
 
 const SHIPPER_STORAGE_KEY = "delivery_shipper_name";
 
@@ -32,11 +33,7 @@ function getServerSnapshot() {
 }
 
 export function TicketForm() {
-  const savedShipperName = useSyncExternalStore(
-    subscribeToStorage,
-    getShipperSnapshot,
-    getServerSnapshot,
-  );
+const savedShipperName = useShipperName();
 
   const [editedShipperName, setEditedShipperName] = useState<string | null>(
     null,
@@ -60,6 +57,12 @@ export function TicketForm() {
     { label: "50k", value: "50000" },
   ];
   const [isShippingFeeEdited, setIsShippingFeeEdited] = useState(false);
+
+
+function handleShipperNameChange(value: string) {
+  setEditedShipperName(value);
+  saveShipperName(value);
+}
 
   function handleContentChange(value: string) {
     setContent(value);
@@ -172,7 +175,7 @@ export function TicketForm() {
                   className="!flex w-full flex-row items-center justify-start gap-1 text-left text-xs font-semibold text-[#264237]"
                 >
                   <User className="w-3.5 h-3.5 text-(--primary)" />
-                  <span>Tên shipper</span>
+                  <span>Tên</span>
                   <span aria-hidden="true" className="text-primary">
                     *
                   </span>
@@ -185,7 +188,7 @@ export function TicketForm() {
                   autoComplete="name"
                   required
                   value={shipperName}
-                  onChange={(e) => setEditedShipperName(e.target.value)}
+                  onChange={(e) =>handleShipperNameChange(e.target.value)}
                   className="h-full min-w-0 text-[13px] text-[#263F34] input-custom h-11 "
                 />
               </Field>

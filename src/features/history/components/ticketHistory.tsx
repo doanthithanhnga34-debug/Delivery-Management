@@ -1,6 +1,12 @@
 "use client";
 
-import { Calendar, DollarSign, ImageIcon, TrendingUp } from "lucide-react";
+import {
+  Calendar,
+  DollarSign,
+  ImageIcon,
+  Siren,
+  TrendingUp,
+} from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { DatePickerInput } from "./filter/dateInputPicker";
 
@@ -296,6 +302,16 @@ export function TicketHistory({ today }: { today: string }) {
       ) : isLoading ? (
         <div className="flex min-h-0 flex-1 items-center justify-center">
           <Loading />
+        </div>
+      ) : filteredTickets.length === 0 ? (
+        <div className="flex min-h-0 flex-1 items-center justify-center">
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-zinc-100 bg-white p-6 text-center shadow-sm">
+            <Siren className="size-8 text-red-500" />
+
+            <span className="text-sm font-medium text-zinc-600">
+              Hôm nay không có phiếu gì nè!
+            </span>
+          </div>
         </div>
       ) : (
         <TicketList tickets={filteredTickets} />

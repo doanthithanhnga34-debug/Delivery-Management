@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getShippingQuote } from "@/server/modules/shipping/shipping.service";
+import { connection, type NextRequest } from "next/server";
 
 // export async function GET() {
 //   if (process.env.NODE_ENV !== "development") {
@@ -55,6 +56,7 @@ import { getShippingQuote } from "@/server/modules/shipping/shipping.service";
 // }
 
 export async function GET(request: NextRequest) {
+   await connection();
   try {
     const district = request.nextUrl.searchParams.get("district");
     const ward = request.nextUrl.searchParams.get("ward");

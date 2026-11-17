@@ -53,7 +53,9 @@ export function DailyReportTable({
     <div className="w-[1000px] bg-white p-6 text-black">
       {isFirstPage ? (
         <>
-          <h1 className="mb-4 text-[44px] font-bold">BÁO CÁO PHIẾU GIAO HÀNG</h1>
+          <h1 className="mb-4 text-[44px] font-bold">
+            BÁO CÁO PHIẾU GIAO HÀNG
+          </h1>
           <div className="mb-5 flex flex-wrap gap-x-8 gap-y-1 text-[28px] font-semibold">
             <span>Shipper: {shipperName}</span>
             <span>Ngày: {reportDate}</span>
@@ -67,32 +69,54 @@ export function DailyReportTable({
         </div>
       )}
 
-     <table className="w-full border-collapse text-sm">
-        {/* thead giữ nguyên như cũ */}
+      <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="bg-sky-100">
             <th className="border border-zinc-300 p-3 text-left">STT</th>
             <th className="border border-zinc-300 p-3 text-left">Thời gian</th>
-            <th className="border border-zinc-300 p-3 text-left">Nội dung đầy đủ</th>
-            <th className="border border-zinc-300 p-3 text-left">Địa chỉ giao hàng</th>
+            <th className="border border-zinc-300 p-3 text-left">
+              Nội dung đầy đủ
+            </th>
+            <th className="border border-zinc-300 p-3 text-left">
+              Địa chỉ giao hàng
+            </th>
             <th className="border border-zinc-300 p-3 text-left">Thanh toán</th>
             <th className="border border-zinc-300 p-3 text-right">Phí ship</th>
-            <th className="border border-zinc-300 p-3 text-right">Phí chành / khác</th>
+            <th className="border border-zinc-300 p-3 text-right">
+              Phí chành / khác
+            </th>
           </tr>
         </thead>
 
         <tbody>
-         {tickets.map((ticket, index) => (
+          {tickets.map((ticket, index) => (
             <tr key={ticket.id} className="align-top">
               <td className="border border-zinc-300 p-3">
                 {startIndex + index + 1}
               </td>
-              <td className="border border-zinc-300 p-3 whitespace-nowrap">
-                {ticket.createdAt
-                  ? new Date(ticket.createdAt).toLocaleString("vi-VN", {
-                      timeZone: "Asia/Ho_Chi_Minh",
-                    })
-                  : ""}
+              <td className="border border-zinc-300 p-2 text-center">
+                {ticket.createdAt && (
+                  <>
+                    <div className="whitespace-nowrap font-medium">
+                      {new Date(ticket.createdAt).toLocaleTimeString("vi-VN", {
+                        timeZone: "Asia/Ho_Chi_Minh",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                        hour12: false,
+                      })}
+                    </div>
+
+                    <div className="whitespace-nowrap text-xs text-zinc-500">
+                      {new Date(ticket.createdAt).toLocaleDateString("vi-VN", {
+                        timeZone: "Asia/Ho_Chi_Minh",
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                      })}
+                    </div>
+                  </>
+                )}
               </td>
               <td className="border border-zinc-300 p-3 whitespace-pre-wrap break-words max-w-[380px]">
                 {ticket.content}
@@ -106,14 +130,14 @@ export function DailyReportTable({
                     .filter((value) => value?.trim())
                     .join(" - ")) ||
                   ticket.analysis.deliveryAddress?.trim() ||
-                  ticket.content}
+                  ""}
               </td>
               <td className="border border-zinc-300 p-3">
                 {ticket.analysis.payment
                   ? `${ticket.analysis.payment.label}: ${ticket.analysis.payment.amount}`
                   : ""}
               </td>
-              <td className="border border-zinc-300 p-3 text-right">
+              <td className="whitespace-nowrap border border-zinc-300 p-3 text-right">
                 {formatCurrency(ticket.shippingFee ?? 0)}
               </td>
               <td className="border border-zinc-300 p-3 text-right">

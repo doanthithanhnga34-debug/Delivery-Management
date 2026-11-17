@@ -81,8 +81,8 @@ export function DailyReportTable({
               Địa chỉ giao hàng
             </th>
             <th className="border border-zinc-300 p-2 text-left">Thanh toán</th>
-            <th className="border border-zinc-300 p-2 text-right">Phí ship</th>
-            <th className="border border-zinc-300 p-2 text-right">
+            <th className="w-[80px] border border-zinc-300 p-2 text-right">Phí ship</th>
+            <th className="w-[80px] border border-zinc-300 p-2 text-right">
               Phí chành / khác
             </th>
           </tr>

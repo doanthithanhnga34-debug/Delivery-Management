@@ -99,7 +99,7 @@ export function TicketHistory({ today }: { today: string }) {
     return filteredTickets.reduce((sum, o) => sum + (o.shippingFee || 0), 0);
   }, [filteredTickets]);
 
-  const PAGE_SIZE = 12;
+  const PAGE_SIZE = 5;
 
   const pages = useMemo(() => {
     const result: (typeof filteredTickets)[] = [];
@@ -357,7 +357,6 @@ useEffect(() => {
                 pageIndex={i + 1}
                 totalPages={pages.length}
                 startIndex={i * PAGE_SIZE}
-                showSummary={i === pages.length - 1}
                 summary={reportSummary}
               />
             </div>

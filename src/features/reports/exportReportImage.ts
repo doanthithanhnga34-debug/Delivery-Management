@@ -36,7 +36,7 @@ export async function createReportImage(
 
   // Tính scale dựa trên kích thước thực tế
   const scale = Math.min(
-    2,
+    3,
     MAX_IMAGE_SIDE / width,
     MAX_IMAGE_SIDE / height,
     Math.sqrt(MAX_IMAGE_PIXELS / (width * height)),

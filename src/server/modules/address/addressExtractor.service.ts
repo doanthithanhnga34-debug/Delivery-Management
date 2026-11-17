@@ -11,9 +11,8 @@ interface AddressSection {
   type: SectionType;
   text: string;
 }
-
 const INVOICE_MARKER =
-  /(?:th[oô]ng\s*tin\s*(?:xu[aấ]t\s*)?(?:h[oó]a|ho[aá])\s*đ[oơ]n|xu[aấ]t\s*(?:h[oó]a|ho[aá])\s*đ[oơ]n|t[eê]n\s*người\s*mua\s*:|t[eê]n\s*đơn\s*vị\s*:|hộ\s*kinh\s*doanh|công\s*ty\s*tnhh|mã\s*số\s*thuế\s*:|mst\s*:)/giu;
+  /(?:th[oô]ng\s*tin\s*(?:xu[aấ]t\s*)?(?:h[oó]a|ho[aá])\s*đ[oơ]n|xu[aấ]t\s*(?:h[oó]a|ho[aá])\s*đ[oơ]n|t[eê]n\s*người\s*mua\s*:|t[eê]n\s*đơn\s*vị\s*:|hộ\s*kinh\s*doanh|mã\s*số\s*thuế\s*:|mst\s*:)/giu;
 const CARRIER_MARKER =
   /(?:nhà\s*xe\s+(?!check\b|trước\b|chưa\b)|chành\s*xe|chành\s+(?!xe\b|số\b)[\p{L}]+(?:\s+[\p{L}]+){0,2}|gửi\s*xe|gởi\s*xe|xe\s+buýt\s+số\s*\d+|(?<![\p{L}])xe\s+[\p{L}]+(?:\s+[\p{L}]+){0,2})/giu;
 const DELIVERY_MARKER =
@@ -25,11 +24,18 @@ const MONEY =
   /(?:\b(?:thu\s*khách|công\s*nợ|chuyển\s*khoản|ck|ship|phí\s*ship)\s*[:：=\-]?\s*\d+)/iu;
 const PRODUCT_START =
   /(?:^|[\s,;])[-–]?\s*\d+\s*(?:(?:kg|gói|thùng|chai|bịch|hộp|hũ|set)\b|(?:chả|bánh|súp|sốt|nước|bột|gạo|mì|tương|phô\s*mai|kim\s*chi|rong\s*biển|ớt)\b)/iu;
+  const PRODUCT_LINE_BOUNDARY =
+  /\s+[-–]\s*\d{1,3}\s+[\p{L}][\p{L}\d\s-]{3,90}?\s*\d+(?:[.,]\d+)?\s*(?:g|kg|ml|l)\b/iu;
 const CONTACT_END =
   /(?:(?<![\p{L}])(?:sđt|sdt|đt|dt|điện\s*thoại|số\s*điện\s*thoại)(?![\p{L}])\s*[:：]?|(?<![\p{L}])(?:email|mail\s*nhận|liên\s*hệ|mst|mã\s*số\s*thuế|cccd|chủ\s*hộ|người\s*đại\s*diện)\s*[:：]|[\w.+-]+@[\w.-]+\.[a-z]{2,})/iu;
 const ADDRESS_LABEL = /(?:địa\s*chỉ|đ\/?c)\s*[:：]\s*/giu;
 const DELIVERY_NOTE_START =
   /(?:chị\s*gửi\s*đơn\s*nhé|giao\s*giúp\s*chị\s*nha|giao\s*giúp\s*em|nhờ\s*giao\s*giúp|giao\s*giùm\s*chị|giao\s*giùm\s*em)/iu;
+const COMPANY_MARKER =
+  /công\s*ty\s+(?:tnhh|cổ\s*phần|trách\s*nhiệm\s*hữu\s*hạn)/giu;
+
+const PAYMENT_SECTION_MARKER =
+  /(?:thu\s*khách|chuyển\s*khoản|ck|công\s*nợ)\s*[:：=-]?\s*\d/iu;
 
 const ADDRESS_START_PATTERNS: RegExp[] = [
   /(?:bến\s*xe|bến\s*tàu|bến\s*đò)\s+[\p{L}\d]+/iu,
@@ -85,6 +91,29 @@ function splitSections(content: string): AddressSection[] {
       });
     }
   }
+  for (const match of content.matchAll(COMPANY_MARKER)) {
+  const before = content.slice(0, match.index);
+  const after = content.slice(match.index);
+
+  const hasPaymentBefore = PAYMENT_SECTION_MARKER.test(before);
+
+  const hasTaxInfoAfter =
+    /(?:mã\s*số\s*thuế|mst)\s*[:：]/iu.test(after);
+
+  const hasInvoiceAddressAfter =
+    /địa\s*chỉ\s*[:：]/iu.test(after);
+
+  if (
+    hasPaymentBefore &&
+    hasTaxInfoAfter &&
+    hasInvoiceAddressAfter
+  ) {
+    markers.push({
+      index: match.index,
+      type: "invoice",
+    });
+  }
+}
   markers.sort((a, b) => a.index - b.index);
   const sections: AddressSection[] = [];
   let position = 0;
@@ -113,6 +142,7 @@ function firstMatchIndex(text: string, patterns: RegExp[]): number {
 function trimAtEndMarkers(text: string): string {
   const cut = firstMatchIndex(text, [
     DELIVERY_NOTE_START,
+    PRODUCT_LINE_BOUNDARY,
     PRODUCT_START,
     MONEY,
     CONTACT_END,
@@ -123,18 +153,28 @@ function trimAtEndMarkers(text: string): string {
   const start = findAddressStart(prefix);
 
   if (start < 0) {
-    return cleanText(prefix.replace(new RegExp(PHONE.source, "gu"), " "));
+    return cleanText(
+      prefix.replace(new RegExp(PHONE.source, "gu"), " "),
+    );
   }
 
-  const phones = [...prefix.matchAll(new RegExp(PHONE.source, "gu"))];
+  const phones = [
+    ...prefix.matchAll(new RegExp(PHONE.source, "gu")),
+  ];
 
-  const phoneAfterAddress = phones.find((phone) => phone.index >= start);
+  const phoneAfterAddress = phones.find(
+    (phone) => phone.index >= start,
+  );
 
   if (phoneAfterAddress) {
-    return cleanText(prefix.slice(0, phoneAfterAddress.index));
+    return cleanText(
+      prefix.slice(0, phoneAfterAddress.index),
+    );
   }
 
-  return cleanText(prefix.replace(new RegExp(PHONE.source, "gu"), " "));
+  return cleanText(
+    prefix.replace(new RegExp(PHONE.source, "gu"), " "),
+  );
 }
 function removeRecipientSuffix(text: string): string {
   const RECIPIENT_SUFFIX =
@@ -164,24 +204,53 @@ function findAddressStart(text: string): number {
 function extractDelivery(section: string): string | null {
   const prepared = cleanText(section);
 
+  const hasAddressLabel =
+    [...prepared.matchAll(ADDRESS_LABEL)].length > 0;
+
   const relevant = trimAtEndMarkers(prepared);
+
   if (!relevant) return null;
+
   const startIndex = findAddressStart(relevant);
+
   if (startIndex < 0) {
-    const destination = /(?:gửi\s*về|giao\s*về)\s+(.+)$/iu.exec(relevant);
-    if (destination && AREA_HINT.test(destination[1]))
+    const destination =
+      /(?:gửi\s*về|giao\s*về)\s+(.+)$/iu.exec(relevant);
+
+    if (destination && AREA_HINT.test(destination[1])) {
       return cleanText(destination[1]);
+    }
+
     return null;
   }
+
   let address = cleanText(relevant.slice(startIndex));
 
   address = address.replace(
     /\s+(?:tên\s+(?:khách|người\s*nhận)|người\s*nhận)\s*[:：]?\s*.+$/iu,
     "",
   );
+
   address = removeRecipientSuffix(address);
 
-  return looksLikeAddress(address) ? address : null;
+  if (looksLikeAddress(address)) {
+    return address;
+  }
+
+  // Địa chỉ có nhãn rõ ràng nhưng là địa danh,
+  // không nhất thiết chứa quận, phường hoặc tên đường.
+  if (
+    hasAddressLabel &&
+    address.length >= 12 &&
+    address.length <= 220 &&
+    /[\p{L}]/u.test(address) &&
+    !MONEY.test(address) &&
+    !PRODUCT_START.test(address)
+  ) {
+    return address;
+  }
+
+  return null;
 }
 
 function extractInvoice(section: string): string | null {

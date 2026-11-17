@@ -72,17 +72,17 @@ export function DailyReportTable({
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="bg-sky-100">
-            <th className="border border-zinc-300 p-3 text-left">STT</th>
-            <th className="border border-zinc-300 p-3 text-left">Thời gian</th>
-            <th className="border border-zinc-300 p-3 text-left">
+            <th className="border border-zinc-300 p-2 text-left">STT</th>
+            <th className="border border-zinc-300 p-2 text-left">Thời gian</th>
+            <th className="border border-zinc-300 p-2 text-left">
               Nội dung đầy đủ
             </th>
-            <th className="border border-zinc-300 p-3 text-left">
+            <th className="border border-zinc-300 p-2 text-left">
               Địa chỉ giao hàng
             </th>
-            <th className="border border-zinc-300 p-3 text-left">Thanh toán</th>
-            <th className="border border-zinc-300 p-3 text-right">Phí ship</th>
-            <th className="border border-zinc-300 p-3 text-right">
+            <th className="border border-zinc-300 p-2 text-left">Thanh toán</th>
+            <th className="border border-zinc-300 p-2 text-right">Phí ship</th>
+            <th className="border border-zinc-300 p-2 text-right">
               Phí chành / khác
             </th>
           </tr>

@@ -99,7 +99,7 @@ export function TicketHistory({ today }: { today: string }) {
     return filteredTickets.reduce((sum, o) => sum + (o.shippingFee || 0), 0);
   }, [filteredTickets]);
 
-  const PAGE_SIZE = 5;
+  const PAGE_SIZE = 4;
 
   const pages = useMemo(() => {
     const result: (typeof filteredTickets)[] = [];

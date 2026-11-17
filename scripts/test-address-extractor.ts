@@ -6,7 +6,10 @@ import { analyzeShippingAddresses } from "@/server/modules/message/extractMessag
 const samples = [
   `Ly Na 0364532423 GỬI ĐÚNG HÀNG CHO KHÁCH 38 phan chu trinh phường 9 đà lat -20kg bgpm loại 2 - 1.800 CK 1.800 ship 20 Xe Thành Bưởi KH KHÔNG LẤY HD VAT`,
   `GIAO TRƯỚC 11h30 Hồng Như bến xe mỹ phước 1 .bến cát bình dương Sdt 0948062545 -20kg sốt trong - 760 -2 Nước sốt gà chiên vị ngọt Chungwoo 2.1kg - 296 -1 Nước sốt gà chiên vị cay Chungwoo 2.1kg-152 ck 1.208.000 ship 20  Xe thiện dương 95 bắc hải p15 quận 10 0945155595`,
-  `Hanh Ngo 0782741882 Số 34, Đường Cô Giang quận 1, Thành phố Hồ Chí Minh, Việt Nam 4 bịch Bánh gạo thỏi TBK 500g - 152 ship 35 ck 187 -------------------------- Tên công ty: CÔNG TY TNHH SINASEAN VIỆT NAM Địa chỉ: Số 34, Đường Số 10, Khu Dân Cư Him Lam, Phường Tân Hưng, Thành phố Hồ Chí Minh, Việt Nam MST: 0313254387 Mail: acc.sinasean@gmail.com Đại diện: Bà Võ Hoàng Bảo Linh Chức vụ: Giám đốc`
+  `Hanh Ngo 0782741882 Số 34, Đường Cô Giang quận 1, Thành phố Hồ Chí Minh, Việt Nam 4 bịch Bánh gạo thỏi TBK 500g - 152 ship 35 ck 187 -------------------------- Tên công ty: CÔNG TY TNHH SINASEAN VIỆT NAM Địa chỉ: Số 34, Đường Số 10, Khu Dân Cư Him Lam, Phường Tân Hưng, Thành phố Hồ Chí Minh, Việt Nam MST: 0313254387 Mail: acc.sinasean@gmail.com Đại diện: Bà Võ Hoàng Bảo Linh Chức vụ: Giám đốc`,
+  `GIAO KÈM PXK+HOÁ ĐƠN THANH TOÁN NGAY KHI NHẬN HÀNG CÔNG TY TNHH THƯƠNG MẠI THỰC PHẨM SAKANA 560/4 Nơ Trang Long, Phường Bình Lợi Trung, Thành phố Hồ Chí Minh, Việt Nam 0908.588.533 5 Giấm táo Ottogi 2L-375 ship 35 thu khách 410  CÔNG TY TNHH THƯƠNG MẠI THỰC PHẨM SAKANA Địa chỉ : 560/4 Nơ Trang Long, Phường Bình Lợi Trung, Thành phố Hồ Chí Minh,Việt Nam Mã số thuế : 0319056423 email: ketoankhn2@gmail.com`,
+  `IN PXK GIAO HÀNG MANG THEO 0385 908 003- -Phú Địa chỉ: Nhà công vụ làng đại học quốc gia -20 Thanh cua King Maki 500g- 960 ship 60 thu khách 1.020  Mã số thuế: 0316893430 Tên công ty: CÔNG TY CỔ PHẦN ẨM THỰC Q9 Địa chỉ: 36 Đặng Văn Bi, Khu phố 31, Phường Thủ Đức, Thành phố Hồ Chí Minh, Việt Nam Email: biatuyetq9.company@gmail.com`,
+  
 ];
 
 

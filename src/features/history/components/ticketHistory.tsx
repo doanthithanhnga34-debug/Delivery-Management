@@ -7,7 +7,7 @@ import {
   Siren,
   TrendingUp,
 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DatePickerInput } from "./filter/dateInputPicker";
 
 import { format, parseISO, subDays } from "date-fns";
@@ -21,9 +21,15 @@ import Loading from "@/app/(shipper)/history/loading";
 import { useTicketHistory } from "../hooks/useTicketHistory";
 import { DailyReportExport } from "@/features/reports/components/dailyReport";
 import { toBlob, toPng } from "html-to-image";
-import { DailyReportTable } from "@/features/reports/dailyReportTable";
+import {
+  calcReportSummary,
+  DailyReportTable,
+} from "@/features/reports/dailyReportTable";
 import { toast } from "@/components/ui/toast";
-import { createReportImage } from "@/features/reports/exportReportImage";
+import {
+  createReportImage,
+  createReportImages,
+} from "@/features/reports/exportReportImage";
 
 const filterOptions: {
   value: DateFilterType;
@@ -93,10 +99,177 @@ export function TicketHistory({ today }: { today: string }) {
     return filteredTickets.reduce((sum, o) => sum + (o.shippingFee || 0), 0);
   }, [filteredTickets]);
 
-  async function handleExportAndShare() {
-    if (!reportRef.current || isExporting) return;
+  const PAGE_SIZE = 12;
 
-    if (filteredTickets.length === 0) {
+  const pages = useMemo(() => {
+    const result: (typeof filteredTickets)[] = [];
+    for (let i = 0; i < filteredTickets.length; i += PAGE_SIZE) {
+      result.push(filteredTickets.slice(i, i + PAGE_SIZE));
+    }
+    return result;
+  }, [filteredTickets]);
+
+  const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [reportFiles, setReportFiles] = useState<File[]>([]);
+  const [isPreparing, setIsPreparing] = useState(false);
+
+  const reportSummary = useMemo(
+    () => calcReportSummary(filteredTickets),
+    [filteredTickets],
+  );
+
+  // async function handleExportAndShare() {
+  //   if (!reportRef.current || isExporting) return;
+
+  //   if (filteredTickets.length === 0) {
+  //     toast.add({
+  //       type: "warning",
+  //       title: "Không có dữ liệu",
+  //       description: "Không có phiếu giao hàng để xuất báo cáo.",
+  //     });
+  //     return;
+  //   }
+
+  //   setIsExporting(true);
+
+  //   try {
+  //     await document.fonts.ready;
+
+  //     const element = reportRef.current;
+
+  //     const safeShipperName = shipperName
+  //       .trim()
+  //       .replace(/[^\p{L}\p{N}-]+/gu, "-");
+
+  //     const filename = `bao-cao-${safeShipperName}-${today}.png`;
+
+  //     const file = await createReportImage(element, filename);
+
+  //     if (
+  //       typeof navigator.share === "function" &&
+  //       typeof navigator.canShare === "function" &&
+  //       navigator.canShare({ files: [file] })
+  //     ) {
+  //       try {
+  //         await navigator.share({
+  //           files: [file],
+  //         });
+
+  //         return;
+  //       } catch (error) {
+  //         if (error instanceof DOMException && error.name === "AbortError") {
+  //           return;
+  //         }
+
+  //         console.warn("[SHARE_REPORT_ERROR]", error);
+  //       }
+  //     }
+  //     const url = URL.createObjectURL(file);
+
+  //     try {
+  //       const link = document.createElement("a");
+  //       link.href = url;
+  //       link.download = filename;
+
+  //       document.body.appendChild(link);
+  //       link.click();
+  //       link.remove();
+  //     } finally {
+  //       window.setTimeout(() => {
+  //         URL.revokeObjectURL(url);
+  //       }, 60_000);
+  //     }
+
+  //     toast.add({
+  //       type: "info",
+  //       title: "Đã tạo ảnh báo cáo",
+  //       description:
+  //         "Không thể mở chia sẻ trực tiếp. Hãy chọn ảnh đã tải trong Zalo để gửi.",
+  //     });
+  //   } catch (error) {
+  //     console.error("[EXPORT_REPORT_ERROR]", error);
+
+  //     toast.add({
+  //       type: "error",
+  //       title: "Xuất báo cáo thất bại",
+  //       description:
+  //         error instanceof Error ? error.message : "Không thể tạo ảnh báo cáo.",
+  //     });
+  //   } finally {
+  //     setIsExporting(false);
+  //   }
+
+  // }
+
+  // Chỉ đổi khi nội dung báo cáo thực sự đổi, không phụ thuộc tham chiếu mảng
+const reportKey = useMemo(
+  () =>
+    JSON.stringify([
+      shipperName,
+      today,
+      format(selectedDate, "yyyy-MM-dd"),
+      filteredTickets.map((t) => [
+        t.id,
+        t.content,
+        t.shippingFee,
+        t.transportFee,
+        t.otherFee,
+      ]),
+    ]),
+  [filteredTickets, shipperName, today, selectedDate],
+);
+
+// Giữ pages mới nhất để effect đọc mà không cần đưa vào dependency
+const pagesRef = useRef(pages);
+pagesRef.current = pages;
+useEffect(() => {
+  let cancelled = false;
+
+  // Chỉ set khi thực sự cần, tránh re-render thừa
+  setReportFiles((prev) => (prev.length === 0 ? prev : []));
+
+  const pageCount = pagesRef.current.length;
+  if (pageCount === 0 || !shipperName) {
+    setIsPreparing(false);
+    return;
+  }
+
+  setIsPreparing(true);
+
+  const timer = window.setTimeout(async () => {
+    try {
+      await document.fonts.ready;
+      if (cancelled) return;
+
+      const elements = pageRefs.current
+        .slice(0, pageCount)
+        .filter((el): el is HTMLDivElement => el !== null);
+
+      const safeName = shipperName.trim().replace(/[^\p{L}\p{N}-]+/gu, "-");
+      const files = await createReportImages(
+        elements,
+        `bao-cao-${safeName}-${today}`,
+      );
+
+      if (!cancelled) setReportFiles(files);
+    } catch (e) {
+      console.error("[PREPARE_REPORT_ERROR]", e);
+    } finally {
+      if (!cancelled) setIsPreparing(false);
+    }
+  }, 400);
+
+  return () => {
+    cancelled = true;
+    window.clearTimeout(timer);
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [reportKey]);
+
+  async function handleExportAndShare() {
+    if (isExporting || isPreparing) return;
+
+    if (reportFiles.length === 0) {
       toast.add({
         type: "warning",
         title: "Không có dữ liệu",
@@ -106,69 +279,34 @@ export function TicketHistory({ today }: { today: string }) {
     }
 
     setIsExporting(true);
-
     try {
-      await document.fonts.ready;
-
-      const element = reportRef.current;
-
-      const safeShipperName = shipperName
-        .trim()
-        .replace(/[^\p{L}\p{N}-]+/gu, "-");
-
-      const filename = `bao-cao-${safeShipperName}-${today}.png`;
-
-      const file = await createReportImage(element, filename);
-
-      if (
-        typeof navigator.share === "function" &&
-        typeof navigator.canShare === "function" &&
-        navigator.canShare({ files: [file] })
-      ) {
+      if (navigator.canShare?.({ files: reportFiles })) {
         try {
-          await navigator.share({
-            files: [file],
-          });
-
+          await navigator.share({ files: reportFiles }); // tất cả ảnh, một lần
           return;
         } catch (error) {
-          if (error instanceof DOMException && error.name === "AbortError") {
+          if (error instanceof DOMException && error.name === "AbortError")
             return;
-          }
-
           console.warn("[SHARE_REPORT_ERROR]", error);
         }
       }
-      const url = URL.createObjectURL(file);
-
-      try {
+      for (const file of reportFiles) {
+        const url = URL.createObjectURL(file);
         const link = document.createElement("a");
         link.href = url;
-        link.download = filename;
-
+        link.download = file.name;
         document.body.appendChild(link);
         link.click();
         link.remove();
-      } finally {
-        window.setTimeout(() => {
-          URL.revokeObjectURL(url);
-        }, 60_000);
+        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        await new Promise((r) => setTimeout(r, 400));
       }
 
       toast.add({
         type: "info",
         title: "Đã tạo ảnh báo cáo",
         description:
-          "Không thể mở chia sẻ trực tiếp. Hãy chọn ảnh đã tải trong Zalo để gửi.",
-      });
-    } catch (error) {
-      console.error("[EXPORT_REPORT_ERROR]", error);
-
-      toast.add({
-        type: "error",
-        title: "Xuất báo cáo thất bại",
-        description:
-          error instanceof Error ? error.message : "Không thể tạo ảnh báo cáo.",
+          "Không thể mở chia sẻ trực tiếp. Hãy chọn các ảnh đã tải trong Zalo để gửi.",
       });
     } finally {
       setIsExporting(false);
@@ -180,14 +318,10 @@ export function TicketHistory({ today }: { today: string }) {
       <div className="shrink-0 space-y-2">
         <button
           onClick={handleExportAndShare}
-          disabled={
-            isExporting ||
-            isLoading ||
-            !shipperName ||
-            filteredTickets.length === 0
-          }
+          disabled={isExporting || isLoading || !shipperName}
           className="flex justify-between items-center rounded-lg gap-2 w-full p-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-500/25"
         >
+          {/* <span>{isPreparing ? "Đang chuẩn bị..." : `Xuất ${reportFiles.length} ảnh`}</span> */}
           <div>
             <ImageIcon className="w-4 h-4 text-white" />
           </div>
@@ -198,7 +332,7 @@ export function TicketHistory({ today }: { today: string }) {
             Xuất ảnh
           </span>
         </button>
-        <div className="absolute -left-[99999px] top-0">
+        {/* <div className="absolute -left-[99999px] top-0">
           <div ref={reportRef}>
             <DailyReportTable
               tickets={filteredTickets}
@@ -206,7 +340,30 @@ export function TicketHistory({ today }: { today: string }) {
               reportDate={format(selectedDate, "dd/MM/yyyy")}
             />
           </div>
+        </div> */}
+
+        <div className="absolute -left-[99999px] top-0">
+          {pages.map((pageTickets, i) => (
+            <div
+              key={i}
+              ref={(el) => {
+                pageRefs.current[i] = el;
+              }}
+            >
+              <DailyReportTable
+                tickets={pageTickets}
+                shipperName={shipperName}
+                reportDate={format(selectedDate, "dd/MM/yyyy")}
+                pageIndex={i + 1}
+                totalPages={pages.length}
+                startIndex={i * PAGE_SIZE}
+                showSummary={i === pages.length - 1}
+                summary={reportSummary}
+              />
+            </div>
+          ))}
         </div>
+
         <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 px-1">
           <span className="font-semibold flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300">
             <Calendar className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
@@ -279,7 +436,7 @@ export function TicketHistory({ today }: { today: string }) {
       </div>
 
       {!shipperName ? (
-        <div className="flex min-h-0 flex-1 items-center justify-center">
+        <div className="flex min-h-0 flex-1 items-center justify-center text-center text-sm text-zinc-500">
           Vui lòng nhập tên shipper tại trang Tạo phiếu
         </div>
       ) : error && tickets.length === 0 ? (
@@ -291,7 +448,17 @@ export function TicketHistory({ today }: { today: string }) {
           <Loading />
         </div>
       ) : (
-        <TicketList tickets={filteredTickets} onRefresh={refetch} />
+        <TicketList
+          tickets={filteredTickets}
+          onRefresh={refetch}
+          emptyMessage={
+            dateFilter === "today"
+              ? "Hôm nay không có phiếu nào!"
+              : dateFilter === "yesterday"
+                ? "Hôm qua không có phiếu nào!"
+                : "Không có phiếu trong khoảng thời gian này!"
+          }
+        />
       )}
     </div>
   );

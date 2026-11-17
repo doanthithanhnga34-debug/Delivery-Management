@@ -36,7 +36,7 @@ export async function createReportImage(
 
   // Tính scale dựa trên kích thước thực tế
   const scale = Math.min(
-    3,
+    2,
     MAX_IMAGE_SIDE / width,
     MAX_IMAGE_SIDE / height,
     Math.sqrt(MAX_IMAGE_PIXELS / (width * height)),
@@ -55,7 +55,7 @@ export async function createReportImage(
     logging: false,
     width,
     height,
-    windowWidth: Math.max(1400, width),
+     windowWidth: width,
   });
 
   const blob = await new Promise<Blob>((resolve, reject) => {
@@ -79,6 +79,17 @@ export async function createReportImage(
   );
 }
 
+export async function createReportImages(
+  elements: HTMLElement[],
+  baseName: string,
+): Promise<File[]> {
+  const files: File[] = [];
+  for (let i = 0; i < elements.length; i++) {
+    const name = `${baseName}-${i + 1}-${elements.length}.png`;
+    files.push(await createReportImage(elements[i], name));
+  }
+  return files;
+}
 
 export async function exportReportImage(
   element: HTMLElement,

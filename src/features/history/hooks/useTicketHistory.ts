@@ -6,53 +6,7 @@ interface TicketResponse {
   data?: AnalyzedTicket[];
   message?: string;
 }
-
-// export function useTicketHistory(shipperName: string) {
-//   const [tickets, setTickets] = useState<AnalyzedTicket[]>([]);
-//   const [error, setError] = useState<string | null>(null);
-//   const [loadedShipper, setLoadedShipper] = useState<string | null>(null);
-
-//   const isLoading = Boolean(shipperName) && loadedShipper !== shipperName;
-//   useEffect(() => {
-//     if (!shipperName.trim()) return;
-//     const controller = new AbortController();
-//     async function fetchTickets() {
-//       try {
-//         const response = await fetch(
-//           `/api/tickets?shipperName=${encodeURIComponent(shipperName)}`,
-//           {
-//             signal: controller.signal,
-//             cache: "no-store",
-//           },
-//         );
-//         const result = (await response.json()) as TicketResponse;
-
-//         if (!response.ok || !result.success) {
-//           throw new Error(result.message ?? "Không thể tải lịch sử phiếu");
-//         }
-
-//         if (!controller.signal.aborted) {
-//           setTickets(result.data ?? []);
-//           setError(null);
-
-//           console.log("[TICKETS_STATE_UPDATED]", result.data?.length);
-//         }
-//       } catch (err) {
-//         if (controller.signal.aborted) return;
-//         setError(
-//           err instanceof Error ? err.message : "Có lỗi khi tải lịch sử phiếu",
-//         );
-//       } finally {
-//         if (!controller.signal.aborted) {
-//           setLoadedShipper(shipperName);
-//         }
-//       }
-//     }
-//     void fetchTickets();
-//     return () => controller.abort();
-//   }, [shipperName]);
-//   return { tickets, isLoading, error };
-// }
+const EMPTY_TICKETS: AnalyzedTicket[] = [];
 
 interface TicketApiResponse {
   success: boolean;
@@ -90,7 +44,6 @@ export function useTicketHistory(shipperName: string) {
 
   const requestIdRef = useRef(0);
 
-  // Tự động tải khi mở History hoặc đổi shipper
   useEffect(() => {
     const controller = new AbortController();
     const requestId = ++requestIdRef.current;
@@ -160,11 +113,12 @@ export function useTicketHistory(shipperName: string) {
   }, [name]);
 
   const isLoading = Boolean(name) && loadedFor !== name;
+  const isCurrent = loadedFor === name;
 
   return {
-    tickets: loadedFor === name ? tickets : [],
+    tickets: isCurrent ? tickets : EMPTY_TICKETS,
     isLoading,
-    error: loadedFor === name ? error : null,
+    error: isCurrent ? error : null,
     refetch,
   };
 }

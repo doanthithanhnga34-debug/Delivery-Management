@@ -1,11 +1,19 @@
-import { Type } from "@google/genai";
+import { Delivery, Type } from "@google/genai";
 import {
   TicketAnalysis,
   TicketAnalysisSchema,
 } from "../schema/ticketAnalysis.schema";
-import { getGeminiModel, getVertexClient } from "@/lib/vertex/vertex.client";
-import { buildTicketAnalysisInput, TICKET_ANALYSIS_PROMPT } from "../prompts/ticketAnalysis.prompt";
 
+import {
+  buildTicketAnalysisInput,
+  TICKET_ANALYSIS_PROMPT,
+} from "../prompts/ticketAnalysis.prompt";
+import { nullable, properties } from "zod";
+import {
+  getGeminiModel,
+  getVertexClient,
+} from "@/server/integrations/ai/vertex.client";
+import { normalizeTicketAnalysis } from "@/utils/normalizeTicketAnalysis";
 
 const responseSchema = {
   type: Type.OBJECT,
@@ -52,12 +60,68 @@ const responseSchema = {
       },
       required: ["type", "label", "amount"],
     },
+    deliveryLocation: {
+      type: Type.OBJECT,
+      properties: {
+        streetAddress: {
+          type: Type.STRING,
+          nullable: true,
+        },
+        wardMentioned: {
+          type: Type.STRING,
+          nullable: true,
+        },
+        districtMentioned: {
+          type: Type.STRING,
+          nullable: true,
+        },
+        provinceMentioned: {
+          type: Type.STRING,
+          nullable: true,
+        },
+        administrativeSystem: {
+          type: Type.STRING,
+          enum: ["legacy", "current", "unknown", "mixed"],
+        },
+        suggestedNewWard: {
+          type: Type.STRING,
+          nullable: true,
+        },
+        confidence: {
+          type: Type.NUMBER,
+          nullable: true,
+        },
+        suggestedNewAddress: {
+          type: Type.STRING,
+          nullable: true,
+          description: "Địa chỉ giao hàng sau sáp nhập do AI đề xuất",
+        },
+
+        suggestedNewWardConfidence: {
+          type: Type.NUMBER,
+          nullable: true,
+          description: "Độ tin cậy tự đánh giá khi suy luận phường mới",
+        },
+      },
+      required: [
+        "streetAddress",
+        "wardMentioned",
+        "districtMentioned",
+        "provinceMentioned",
+        "administrativeSystem",
+        "suggestedNewWard",
+        "suggestedNewAddress",
+        "confidence",
+        "suggestedNewWardConfidence",
+      ],
+    },
     invoiceAddress: {
       type: Type.STRING,
       nullable: true,
     },
   },
   required: [
+    "deliveryLocation",
     "deliveryAddress",
     "addressConfidence",
     "carrier",
@@ -78,32 +142,41 @@ export async function analyzeTicketWithAI(
   content: string,
 ): Promise<TicketAnalysisResult> {
   const normalizedContent = content.trim();
+
   if (!normalizedContent) {
     throw new Error("Nội dung phiếu không được để trống.");
   }
+
   if (normalizedContent.length > 10_000) {
     throw new Error("Nội dung phiếu quá dài.");
   }
+
+  // 1. Khởi tạo Gemini client
   const client = getVertexClient();
   const model = getGeminiModel();
+
+  // 2. Gọi Gemini đúng một lần
   const response = await client.models.generateContent({
     model,
     contents: buildTicketAnalysisInput(normalizedContent),
 
     config: {
       systemInstruction: TICKET_ANALYSIS_PROMPT,
-
       responseMimeType: "application/json",
       responseSchema,
-
       temperature: 0,
       maxOutputTokens: 2048,
     },
   });
+
+  // 3. Kiểm tra phản hồi
   const rawText = response.text;
+
   if (!rawText?.trim()) {
     throw new Error("Gemini không trả về nội dung phân tích.");
   }
+
+  // 4. Parse JSON
   let parsed: unknown;
 
   try {
@@ -111,22 +184,31 @@ export async function analyzeTicketWithAI(
   } catch {
     throw new Error("Gemini trả về JSON không hợp lệ.");
   }
-  const validated = TicketAnalysisSchema.parse(parsed);
-  const analysis: TicketAnalysis = {
-    ...validated,
 
-    addressConfidence: validated.deliveryAddress
-      ? validated.addressConfidence
+  // 5. Validate với Zod
+  const validated = TicketAnalysisSchema.parse(parsed);
+
+  // 6. Chuẩn hóa dữ liệu chuyển đổi địa chỉ
+  const normalized = normalizeTicketAnalysis(validated);
+
+  // 7. Chuẩn hóa các trường nghiệp vụ hiện có
+  const analysis: TicketAnalysis = {
+    ...normalized,
+
+    addressConfidence: normalized.deliveryAddress
+      ? normalized.addressConfidence
       : null,
 
-    carrier: validated.carrier.hasCarrier
-      ? validated.carrier
+    carrier: normalized.carrier.hasCarrier
+      ? normalized.carrier
       : {
           name: null,
           address: null,
           hasCarrier: false,
         },
   };
+
+  // 8. Trả kết quả và token usage
   return {
     analysis,
     model,

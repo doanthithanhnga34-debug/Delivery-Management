@@ -1,5 +1,4 @@
 import { GoogleGenAI } from "@google/genai";
-// import "server-only";
 let client: GoogleGenAI | null = null;
 type GeminiProvider = "developer" | "vertex";
 

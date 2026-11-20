@@ -1,0 +1,14 @@
+{
+  "data": [
+    {
+      "id": "HCM-VAN-KIEP-001",
+      "street": "Vạn Kiếp",
+      "declaredWard": "Bình Thạnh",
+      "targetWardCode": "26944",
+      "targetWardName": "Gia Định",
+      "houseNumber": "25",
+      "enabled": true,
+      "reason": "Địa chỉ 25 Vạn Kiếp được xác minh thuộc Phường Gia Định"
+    }
+  ]
+}

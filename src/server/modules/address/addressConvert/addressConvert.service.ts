@@ -5,7 +5,11 @@ import mergeData from "@/data/addresses/ward-merge-history.json";
 import legacyWardsData from "@/data/addresses/wards-legacy.json";
 import legacyDistrictsData from "@/data/addresses/districts-legacy.json";
 import newWardsData from "@/data/addresses/wards.json";
-
+import boundariesData from "@/data/addresses/geojson/ward-boundaries.json"
+import { Feature, MultiPolygon, Polygon } from "geojson";
+import { point } from "@turf/helpers";
+import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
+import aliasData from "@/data/addresses/ward-alias-history.json";
 interface LegacyWard {
   code: string;
   name: string;
@@ -84,11 +88,71 @@ export type AddressConversionResult =
       candidates: [];
     };
 
-const legacyWards = legacyWardsData.data as LegacyWard[];
-const legacyDistricts =
-  legacyDistrictsData.data as LegacyDistrict[];
-const mergeHistory = mergeData.data as MergeHistory[];
-const newWards = newWardsData.data as NewWard[];
+    interface WardAlias {
+  provinceCode: string;
+  districtCode: string;
+  inputWard: string;
+  targetWardCode: string;
+  targetWardName: string;
+  reason: string;
+}
+
+const wardAliases = aliasData.data as WardAlias[];
+
+const HCM_PROVINCE_CODE = "79";
+
+// 1. Phường mới thuộc TP.HCM hiện hành
+const newWards = (
+  newWardsData.data as NewWard[]
+).filter(
+  (ward) => ward.province_code === HCM_PROVINCE_CODE
+);
+
+// 2. Lịch sử sáp nhập dẫn đến TP.HCM hiện hành
+const mergeHistory = (
+  mergeData.data as MergeHistory[]
+).filter(
+  (history) =>
+    history.new_province_code === HCM_PROVINCE_CODE
+);
+
+// 3. Tập hợp mã phường cũ cần thiết
+const legacyWardCodes = new Set(
+  mergeHistory.map((history) => history.old_ward_code)
+);
+
+// 4. Tập hợp mã tỉnh + quận cũ
+const legacyDistrictKeys = new Set(
+  mergeHistory.map(
+    (history) =>
+      `${history.old_province_code}:${history.old_district_code}`
+  )
+);
+
+// 5. Chỉ giữ phường cũ có lịch sử chuyển sang TP.HCM
+const legacyWards = (
+  legacyWardsData.data as LegacyWard[]
+).filter((ward) =>
+  legacyWardCodes.has(ward.code)
+);
+
+// 6. Chỉ giữ quận cũ liên quan đến TP.HCM
+const legacyDistricts = (
+  legacyDistrictsData.data as LegacyDistrict[]
+).filter((district) =>
+  legacyDistrictKeys.has(
+    `${district.province_code}:${district.code}`
+  )
+);
+
+
+const boundaryByWardCode = new Map<string, Feature<Polygon | MultiPolygon>>(
+  (boundariesData as any).features.map((f: any) => [
+    String(f.properties.code),
+    f,
+  ]),
+);
+
 
 
 
@@ -133,6 +197,74 @@ function wardNameKey(ward: LegacyWard | NewWard): string {
 
 function getScope(value: string): "full" | "partial" {
   return value === "full" ? "full" : "partial";
+}
+
+
+function resolveHistoricalWardAlias(address: string): string {
+  const districts = findLegacyDistricts(address);
+
+  if (districts.length !== 1) {
+    return address;
+  }
+
+  const district = districts[0];
+
+  for (const alias of wardAliases) {
+    if (
+      district.code !== alias.districtCode ||
+      district.province_code !== alias.provinceCode
+    ) {
+      continue;
+    }
+
+    // Chỉ hỗ trợ phường đánh số trong bước này.
+    // Không được nhận nhầm số nhà thành số phường.
+    if (!/^\d+$/.test(alias.inputWard)) {
+      continue;
+    }
+
+    // Xác nhận mã phường đích thực sự thuộc quận.
+    const targetWard = legacyWardsByCode.get(
+      alias.targetWardCode
+    );
+
+    if (
+      !targetWard ||
+      targetWard.district_code !== district.code ||
+      targetWard.province_code !== district.province_code ||
+      normalizeKey(targetWard.name) !==
+        normalizeKey(alias.targetWardName)
+    ) {
+      continue;
+    }
+
+    const wardNumber = Number(alias.inputWard);
+
+    const pattern = new RegExp(
+      `(\\b(?:phường|phuong|p)\\.?\\s*)0*${wardNumber}(?=$|[\\s,;])`,
+      "iu"
+    );
+
+    if (!pattern.test(address)) {
+      continue;
+    }
+
+    const converted = address.replace(
+      pattern,
+      (_match, prefix: string) =>
+        `${prefix}${alias.targetWardName}`
+    );
+
+    console.log("[WARD_ALIAS]", {
+      original: address,
+      converted,
+      reason: alias.reason,
+    });
+
+    return converted;
+  }
+
+  return address;
 }
 
 
@@ -302,12 +434,16 @@ function hasWardNameWithoutPrefix(
   address: string,
   ward: LegacyWard,
 ): boolean {
-  const text = normalizeKey(address);
   const name = wardNameKey(ward);
 
-  return containsPhrase(text, name);
-}
+  // Không nhận diện phường số chỉ qua một số
+  // xuất hiện tự do trong chuỗi địa chỉ.
+  if (/^\d+$/.test(name)) {
+    return false;
+  }
 
+  return containsPhrase(address, name);
+}
 
 function findLegacyWards(
   address: string,
@@ -643,13 +779,15 @@ export function convertOldAddress(
       candidates: [],
     };
   }
+  const normalizedAddress =
+    resolveHistoricalWardAlias(originalAddress);
+    const districts = findLegacyDistricts(normalizedAddress);
 
-  const districts = findLegacyDistricts(originalAddress);
 
   // Ưu tiên địa chỉ cũ nếu có quận/huyện cũ.
   if (districts.length > 0) {
     const hasExplicitDistrict = districts.some((district) => {
-      const text = normalizeKey(originalAddress);
+      const text = normalizeKey(normalizedAddress);
       const full = districtNameKey(district);
       const name = normalizeKey(district.name);
 
@@ -668,7 +806,7 @@ export function convertOldAddress(
     // không được nhận nhầm phường mới trùng tên.
     if (hasExplicitDistrict) {
       return convertLegacyAddress(
-        originalAddress,
+       normalizedAddress,
         districts,
       );
     }
@@ -676,7 +814,7 @@ export function convertOldAddress(
     // Nếu chỉ đoán huyện từ tên không có tiền tố,
     // kiểm tra có phường cũ thuộc huyện ấy không.
     const legacyResult = convertLegacyAddress(
-      originalAddress,
+      normalizedAddress,
       districts,
     );
 
@@ -687,5 +825,293 @@ export function convertOldAddress(
 
   // Không nhận diện được tổ hợp địa chỉ cũ.
   // Tiếp tục thử nhận diện địa chỉ mới.
-  return resolveNewAddress(originalAddress);
+  return resolveNewAddress(normalizedAddress);
+}
+
+
+type GeoResult = {
+  lat: number;
+  lng: number;
+  type: string;
+  name: string;
+  osmClass: string;
+  houseNumber: string | null;
+  road: string | null;
+};
+type Box = { minLng: number; minLat: number; maxLng: number; maxLat: number };
+
+const geocodeCache = new Map<string, GeoResult | null>();
+
+function candidateBox(codes: string[]): Box | null {
+  let minLng = Infinity, minLat = Infinity;
+  let maxLng = -Infinity, maxLat = -Infinity;
+
+  const walk = (c: any): void => {
+    if (typeof c[0] === "number") {
+      minLng = Math.min(minLng, c[0]);
+      maxLng = Math.max(maxLng, c[0]);
+      minLat = Math.min(minLat, c[1]);
+      maxLat = Math.max(maxLat, c[1]);
+    } else {
+      c.forEach(walk);
+    }
+  };
+
+  for (const code of codes) {
+    const feature = boundaryByWardCode.get(code);
+    if (feature) walk((feature.geometry as any).coordinates);
+  }
+
+  return Number.isFinite(minLng)
+    ? { minLng, minLat, maxLng, maxLat }
+    : null;
+}
+
+async function geocode(query: string, box: Box | null): Promise<GeoResult | null> {
+  const cacheKey = `${query}|${JSON.stringify(box)}`;
+  if (geocodeCache.has(cacheKey)) return geocodeCache.get(cacheKey)!;
+
+  const url = new URL("https://nominatim.openstreetmap.org/search");
+  url.searchParams.set("q", query);
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("limit", "1");
+  url.searchParams.set("countrycodes", "vn");
+  url.searchParams.set("addressdetails", "1");
+
+  if (box) {
+    // viewbox = trái,trên,phải,dưới = minLng,maxLat,maxLng,minLat
+    url.searchParams.set(
+      "viewbox",
+      `${box.minLng},${box.maxLat},${box.maxLng},${box.minLat}`,
+    );
+    url.searchParams.set("bounded", "1");
+  }
+
+  try {
+    const res = await fetch(url, {
+      headers: {
+        // Đổi thành tên app + email thật của bạn
+        "User-Agent": "MyAddressApp/1.0 (thanhnga@tteokbokki.vn)",
+      },
+    });
+
+    if (!res.ok) {
+      console.error("[GEOCODE] HTTP", res.status, url.toString());
+      return null; // không cache lỗi
+    }
+
+    const json = (await res.json()) as any[];
+    const first = json[0];
+
+    const result: GeoResult | null = first
+  ? {
+      lat: Number(first.lat),
+      lng: Number(first.lon),
+      type: String(first.type ?? ""),
+      name: String(first.display_name ?? ""),
+      osmClass: String(first.class ?? ""),
+      houseNumber: first.address?.house_number ?? null,
+      road: first.address?.road ?? null,
+    }
+  : null;
+
+    geocodeCache.set(cacheKey, result);
+    return result;
+  } catch (error) {
+    console.error("[GEOCODE] lỗi mạng", error);
+    return null;
+  }
+}
+
+const HOUSE_LEVEL_TYPES = new Set([
+  "house", "building", "apartments", "yes",
+  "commercial", "retail", "office", "residential",
+]);
+
+export async function convertOldAddressPrecise(
+  address: string,
+): Promise<AddressConversionResult> {
+  const result = convertOldAddress(address);
+
+  if (result.status !== "check" || result.candidates.length < 2) {
+    return result;
+  }
+
+  const codes = result.candidates.map((c) => c.newWardCode);
+  const box = candidateBox(codes);
+  const streetPart = address.split(",")[0].trim();
+
+  console.log("[PRECISE] candidates:", codes, "box:", box);
+
+  // Thử lần lượt từ cụ thể đến rộng
+  const queries = [
+    `${streetPart}, Hồ Chí Minh`,
+    streetPart,
+  ];
+
+  let coords: GeoResult | null = null;
+
+for (const q of queries) {
+  const found = await geocode(q, box);
+
+  if (!found) continue;
+
+  // Phải có số nhà chính xác
+  if (
+    !found.houseNumber ||
+    normalizeKey(found.houseNumber) !== "187"
+  ) {
+    console.log(
+      "[PRECISE] Bỏ qua kết quả không đúng số nhà:",
+      found,
+    );
+    continue;
+  }
+
+  // Phải có tên đường phù hợp
+  if (
+    !found.road ||
+    normalizeKey(found.road) !==
+      normalizeKey("Điện Biên Phủ")
+  ) {
+    continue;
+  }
+
+  coords = found;
+  break;
+}
+
+  if (!coords) {
+    return { ...result, reason: "Không geocode được địa chỉ trong khu vực" };
+  }
+
+  const pt = point([coords.lng, coords.lat]);
+
+  const matched = result.candidates.filter((c) => {
+    const feature = boundaryByWardCode.get(c.newWardCode);
+    return feature ? booleanPointInPolygon(pt, feature) : false;
+  });
+
+  console.log(
+    "[PRECISE] matched:",
+    matched.map((m) => m.newWard),
+    "type:",
+    coords.type,
+  );
+
+  if (matched.length !== 1) {
+    return {
+      ...result,
+      reason: `Điểm geocode (${coords.lat}, ${coords.lng}) không nằm trong đúng 1 phường`,
+    };
+  }
+
+  // Chỉ có tên đường thì điểm chỉ là đại diện cho cả con đường, chưa đủ tin cậy
+  if (!HOUSE_LEVEL_TYPES.has(coords.type)) {
+    return {
+      ...result,
+      reason: `Geocode chỉ ở mức "${coords.type}" (không có số nhà), cần kiểm tra thêm`,
+    };
+  }
+
+  return {
+    status: "exact",
+    source: "old_address",
+    originalAddress: address,
+    candidate: matched[0],
+    oldAddresses: findOldAddresses(matched[0].newWardCode),
+  };
+}
+
+
+
+// ===================== PHÍ SHIP =====================
+
+export interface ShippingFeeRow {
+  district: string; // "Quận 1", "Q.Tân Bình", "Tân Bình"
+  ward: string;     // "Phường Đa Kao", "Đa Kao", "12", "04"
+  fee: number;
+}
+
+export type AmbiguousPolicy = "max" | "min" | "manual";
+
+export type ShippingFeeResult =
+  | {
+      status: "exact";
+      fee: number;
+      matchedBy: "old_address" | "old_ward_name" | "new_address";
+      oldWards: string[];
+    }
+  | {
+      status: "ambiguous";
+      suggestedFee: number | null;
+      fees: number[];
+      options: { oldDistrict: string; oldWard: string; fee: number }[];
+      reason: string;
+    }
+  | { status: "not_found"; reason: string };
+
+const feeByOldWardCode = new Map<string, number>();
+let feeWards: LegacyWard[] = [];
+
+function resolveFeeWard(
+  wardRaw: string,
+  district: LegacyDistrict,
+): LegacyWard | null {
+  // "Phường 04" / "P.4" / "04" / "Đa Kao" → "4" / "da kao"
+  const key = normalizeKey(wardRaw).replace(
+    /^(?:phuong|thi tran|xa|p|x|tt)\s+/,
+    "",
+  );
+  const bare = /^\d+$/.test(key) ? String(Number(key)) : key;
+
+  for (const text of [
+    `Phường ${bare}`,
+    `Xã ${bare}`,
+    `Thị trấn ${bare}`,
+  ]) {
+    const found = findLegacyWards(text, district);
+    if (found.length === 1) return found[0];
+  }
+  return null;
+}
+
+export function loadShippingFees(rows: ShippingFeeRow[]) {
+  feeByOldWardCode.clear();
+
+  const wards = new Map<string, LegacyWard>();
+  const problems: { row: ShippingFeeRow; reason: string }[] = [];
+
+  for (const row of rows) {
+    const districts = findLegacyDistricts(`${row.district} TPHCM`);
+
+    if (districts.length !== 1) {
+      problems.push({
+        row,
+        reason: districts.length
+          ? "Nhiều quận trùng tên"
+          : "Không tìm thấy quận",
+      });
+      continue;
+    }
+
+    const ward = resolveFeeWard(row.ward, districts[0]);
+
+    if (!ward) {
+      problems.push({ row, reason: "Không tìm thấy phường trong quận" });
+      continue;
+    }
+
+    const existing = feeByOldWardCode.get(ward.code);
+    if (existing !== undefined && existing !== row.fee) {
+      problems.push({ row, reason: `Trùng phường, phí khác nhau (${existing})` });
+      continue;
+    }
+
+    feeByOldWardCode.set(ward.code, row.fee);
+    wards.set(ward.code, ward);
+  }
+
+  feeWards = [...wards.values()];
+  return { loaded: feeByOldWardCode.size, problems };
 }

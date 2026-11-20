@@ -1,4 +1,4 @@
-import { convertOldAddress } from "@/server/modules/address/addressConvert.service";
+import { convertOldAddress, convertOldAddressPrecise } from "@/server/modules/address/addressConvert/addressConvert.service";
 import { NextRequest, NextResponse } from "next/server";
 
 
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const result = convertOldAddress(address);
+    const result = await convertOldAddressPrecise(address);
 
     return NextResponse.json({
       success: true,

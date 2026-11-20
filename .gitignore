@@ -44,3 +44,5 @@ next-env.d.ts
 src/credentials/google.json
 
 .vercel
+
+.scripts

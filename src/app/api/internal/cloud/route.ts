@@ -1,29 +1,24 @@
 import { getVercelOidcToken } from "@vercel/oidc";
 import { ExternalAccountClient } from "google-auth-library";
 import { NextResponse } from "next/server";
-
 export async function GET(request: Request) {
- const secret = process.env.INTERNAL_TEST_SECRET;
-const receivedSecret = request.headers.get("x-test-secret");
+  const secret = process.env.INTERNAL_TEST_SECRET;
+  const receivedSecret = request.headers.get("x-test-secret");
 
-console.log("[CLOUD_TEST_AUTH]", {
-  envExists: Boolean(secret),
-  headerExists: Boolean(receivedSecret),
-  matched:
-    Boolean(secret) &&
-    Boolean(receivedSecret) &&
-    receivedSecret === secret,
-});
-
-if (!secret || receivedSecret !== secret) {
-  return NextResponse.json(
-    {
-      success: false,
-      message: "Unauthorized",
-    },
-    { status: 401 },
-  );
-}
+  if (!secret || receivedSecret !== secret) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Unauthorized",
+        debug: {
+          envExists: Boolean(secret),
+          headerExists: Boolean(receivedSecret),
+          matched: Boolean(secret) && receivedSecret === secret,
+        },
+      },
+      { status: 401 },
+    );
+  }
 
   try {
     const projectId = process.env.GCP_PROJECT_ID!;

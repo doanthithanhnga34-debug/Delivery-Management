@@ -3,23 +3,27 @@ import { ExternalAccountClient } from "google-auth-library";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
-  const secret = process.env.INTERNAL_TEST_SECRET;
-  const receivedSecret = request.headers.get("x-test-secret");
+ const secret = process.env.INTERNAL_TEST_SECRET;
+const receivedSecret = request.headers.get("x-test-secret");
 
-  console.log("[TEST_SECRET_DEBUG]", {
-    envExists: Boolean(secret),
-    headerExists: Boolean(receivedSecret),
-    envLength: secret?.length ?? 0,
-    headerLength: receivedSecret?.length ?? 0,
-    matched:
-      Boolean(secret) && Boolean(receivedSecret) && receivedSecret === secret,
-  });
-  if (!secret || request.headers.get("x-test-secret") !== secret) {
-    return NextResponse.json(
-      { success: false, message: "Unauthorized" },
-      { status: 401 },
-    );
-  }
+console.log("[CLOUD_TEST_AUTH]", {
+  envExists: Boolean(secret),
+  headerExists: Boolean(receivedSecret),
+  matched:
+    Boolean(secret) &&
+    Boolean(receivedSecret) &&
+    receivedSecret === secret,
+});
+
+if (!secret || receivedSecret !== secret) {
+  return NextResponse.json(
+    {
+      success: false,
+      message: "Unauthorized",
+    },
+    { status: 401 },
+  );
+}
 
   try {
     const projectId = process.env.GCP_PROJECT_ID!;

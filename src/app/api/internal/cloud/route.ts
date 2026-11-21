@@ -3,13 +3,18 @@ import { ExternalAccountClient } from "google-auth-library";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
-
   const secret = process.env.INTERNAL_TEST_SECRET;
+  const receivedSecret = request.headers.get("x-test-secret");
 
-  if (
-    !secret ||
-    request.headers.get("x-test-secret") !== secret
-  ) {
+  console.log("[TEST_SECRET_DEBUG]", {
+    envExists: Boolean(secret),
+    headerExists: Boolean(receivedSecret),
+    envLength: secret?.length ?? 0,
+    headerLength: receivedSecret?.length ?? 0,
+    matched:
+      Boolean(secret) && Boolean(receivedSecret) && receivedSecret === secret,
+  });
+  if (!secret || request.headers.get("x-test-secret") !== secret) {
     return NextResponse.json(
       { success: false, message: "Unauthorized" },
       { status: 401 },
@@ -43,9 +48,7 @@ export async function GET(request: Request) {
       throw new Error("Không tạo được Google Auth Client");
     }
 
-    client.scopes = [
-      "https://www.googleapis.com/auth/cloud-platform",
-    ];
+    client.scopes = ["https://www.googleapis.com/auth/cloud-platform"];
 
     const tokenResult = await client.getAccessToken();
 
@@ -86,9 +89,7 @@ export async function GET(request: Request) {
       {
         success: false,
         message:
-          error instanceof Error
-            ? error.message
-            : "Lỗi kết nối Google Cloud",
+          error instanceof Error ? error.message : "Lỗi kết nối Google Cloud",
       },
       { status: 500 },
     );

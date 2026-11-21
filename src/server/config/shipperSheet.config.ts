@@ -4,6 +4,7 @@ export interface ShipperSheetConfig {
   contentColumn: number;
   shippingFeeColumn: number;
   otherFeeColumn:number;
+  ticketId:number;
   totalColumns: number;
 }
 
@@ -17,7 +18,8 @@ export const shipperSheetConfigs: Record<
     contentColumn: 1,
     shippingFeeColumn: 4,
     otherFeeColumn:5,
-    totalColumns: 10,
+    ticketId:12,
+    totalColumns: 15,
   },
 
   HUY: {
@@ -26,6 +28,7 @@ export const shipperSheetConfigs: Record<
     contentColumn: 1,
     shippingFeeColumn: 4,
     otherFeeColumn:5,
-    totalColumns: 12,
+    ticketId:12,
+    totalColumns: 15,
   },
 };

@@ -32,7 +32,7 @@ const testCases = [
   //   },
   {
     name: "h-19",
-    content: `Ngọc Trâm -  0868409447 Bến xe thị xã phước long tỉnh bình phước -3kg bg thỏi-144 -3kg sốt trong- 114 -2 Sốt nấu mì cay Maru 2.2kg - 310 ship 20 ck 588  Gửi xe Thành Công Chi  Nhánh Phát Tài Địa chỉ: 96 An Dương Vương, Phường 9, Quận 5, TP. Hồ Chí Minh `,
+    content: `GIAO SỚM QUẤN 2 THÙNG THÀNH 1 KIỆN Anh TÝ-Cây Xăng Tân Tân-Trà Vinh ■ 0934460368 - 0939022604 -20 Sốt tteokbokki túi trong 1kg - 760 -3kg bg thỏi -144 -2kg Bgpm1 - 200 -5 Chả cá hq King Omuk 450g - (Gói)-205 -1 Chả cá Hàn Quốc xiên sẵn Heyn 1kg (20 xiên)- 105 ck 1,414.000 ship 20   xe Thanh Nguyên 438an dương vương phường4 quận5  0913640482`,
   },
 ];
 
@@ -46,14 +46,22 @@ async function main() {
     console.log(`\n${testCase.name}`);
 
     try {
+      const startedAt = performance.now();
       const result = await analyzeTicketWithAI(testCase.content);
-
+      const durationMs = performance.now() - startedAt;
       console.dir(result.analysis, { depth: null });
 
       console.log("Model:", result.model);
       console.log("Input tokens:", result.inputTokens);
       console.log("Output tokens:", result.outputTokens);
       console.log("Total tokens:", result.totalTokens);
+
+      console.log("[GEMINI_PERFORMANCE]", {
+        durationMs: Math.round(durationMs),
+        durationSeconds: Number((durationMs / 1000).toFixed(2)),
+        model: result.model,
+        totalTokens: result.totalTokens,
+      });
 
       totalInputTokens += result.inputTokens;
       totalOutputTokens += result.outputTokens;

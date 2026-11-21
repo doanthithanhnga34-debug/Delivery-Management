@@ -36,10 +36,10 @@ export function getVertexClient(): GoogleGenAI {
     return client;
   }
 
-  const project = process.env.GOOGLE_CLOUD_PROJECT;
+  const project = process.env.GCP_PROJECT_ID;
 
   if (!project) {
-    throw new Error("Missing GOOGLE_CLOUD_PROJECT");
+    throw new Error("Missing GCP_PROJECT_ID");
   }
 
   client = new GoogleGenAI({

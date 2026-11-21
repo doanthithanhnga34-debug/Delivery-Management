@@ -35,6 +35,7 @@ export async function saveTicketToSheet(input: SaveTicketInput) {
   rows[config.contentColumn] = input.content;
   rows[config.shippingFeeColumn] = input.shippingFee;
   rows[config.otherFeeColumn] = input.otherFee;
+  rows[config.ticketId] = input.ticketId;
 
   const sheets = createGoogleSheetsClient();
   const escapedName = config.sheetName.replace(/'/g, "''");

@@ -1,9 +1,8 @@
 import type { NextConfig } from "next";
 
-
 const nextConfig: NextConfig = {
   /* config options here */
-   devIndicators: false,
+  devIndicators: false,
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {
@@ -14,6 +13,7 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  serverExternalPackages: ["@google-cloud/tasks", "google-auth-library"],
 };
 
 export default nextConfig;

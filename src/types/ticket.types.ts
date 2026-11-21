@@ -19,6 +19,7 @@ export interface CreateTicketInput {
 }
 
 export interface SaveTicketInput {
+   ticketId:string;
   shipperName: string;
   content: string;
   shippingFee: number;

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 
-export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   const secret = process.env.INTERNAL_TEST_SECRET;

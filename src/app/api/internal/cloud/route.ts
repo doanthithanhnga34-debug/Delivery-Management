@@ -3,9 +3,6 @@ import { getVercelOidcToken } from "@vercel/oidc";
 import { ExternalAccountClient } from "google-auth-library";
 import { NextResponse } from "next/server";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
 export async function GET(request: Request) {
   // 1. Xác thực API test
   const secret = process.env.INTERNAL_TEST_SECRET;

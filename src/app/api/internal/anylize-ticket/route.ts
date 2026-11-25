@@ -1,106 +1,246 @@
-import { NextResponse } from "next/server";
+
 import { OAuth2Client } from "google-auth-library";
-import { analyzeAndSaveTicket } from "@/server/modules/ai/services/ticketAnalysisPresistance";
+import { NextResponse } from "next/server";
 
+import { analyzeAndSaveTicket } from
+  "@/server/modules/ai/services/ticketAnalysisPresistance";
+export const maxDuration = 60;
 
+// =====================================================
+// GOOGLE AUTH
+// =====================================================
 
 const authClient = new OAuth2Client();
 
-export async function POST(request: Request) {
-  const authorization = request.headers.get("authorization");
-  const token = authorization?.startsWith("Bearer ")
-    ? authorization.slice(7)
-    : null;
+// =====================================================
+// TYPES
+// =====================================================
 
-  const audience = process.env.AI_WORKER_AUDIENCE;
+type TaskPayload = {
+  ticketId: string;
+  shipperId: string;
+  content: string;
+};
+
+// =====================================================
+// PAYLOAD VALIDATION
+// =====================================================
+
+function isTaskPayload(
+  value: unknown,
+): value is TaskPayload {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const data = value as Record<string, unknown>;
+
+  return (
+    typeof data.ticketId === "string" &&
+    data.ticketId.trim().length > 0 &&
+    data.ticketId.length <= 128 &&
+
+    typeof data.shipperId === "string" &&
+    data.shipperId.trim().length > 0 &&
+    data.shipperId.length <= 128 &&
+
+    typeof data.content === "string" &&
+    data.content.trim().length > 0 &&
+    data.content.length <= 20000
+  );
+}
+
+// =====================================================
+// CLOUD TASKS OIDC AUTHENTICATION
+// =====================================================
+
+async function verifyCloudTasksAuth(
+  request: Request,
+): Promise<boolean> {
+  const expectedAudience =
+    process.env.AI_WORKER_AUDIENCE;
+
   const expectedEmail =
-    process.env.CLOUD_TASKS_SERVICE_ACCOUNT;
+    process.env.CLOUD_TASKS_WORKER_SERVICE_ACCOUNT;
 
-  if (!token || !audience || !expectedEmail) {
-    return NextResponse.json(
-      { success: false, message: "Unauthorized" },
-      { status: 401 },
-    );
+  if (!expectedAudience || !expectedEmail) {
+    throw new Error("AI Worker auth config missing");
+  }
+
+  const authorization =
+    request.headers.get("authorization");
+
+  if (!authorization?.startsWith("Bearer ")) {
+    return false;
+  }
+
+  const token = authorization.slice(7).trim();
+
+  if (!token) {
+    return false;
   }
 
   try {
     const verified = await authClient.verifyIdToken({
       idToken: token,
-      audience,
+      audience: expectedAudience,
     });
 
     const claims = verified.getPayload();
 
-    if (
-      !claims ||
-      claims.email !== expectedEmail ||
-      claims.email_verified !== true
-    ) {
-      return NextResponse.json(
-        { success: false, message: "Forbidden" },
-        { status: 403 },
-      );
+    if (!claims) {
+      return false;
     }
-  } catch {
+
+    // Chỉ chấp nhận Google service account đã cấu hình.
+    const validEmail =
+      claims.email === expectedEmail;
+
+    const verifiedEmail =
+      claims.email_verified === true;
+
+    const validIssuer =
+      claims.iss === "https://accounts.google.com" ||
+      claims.iss === "accounts.google.com";
+
+    return validEmail && verifiedEmail && validIssuer;
+  } catch (error) {
+    console.warn("[AI_WORKER_AUTH_REJECTED]", {
+      message:
+        error instanceof Error
+          ? error.message
+          : "Invalid token",
+    });
+
+    return false;
+  }
+}
+
+// =====================================================
+// POST /api/internal/analyze-ticket
+// =====================================================
+
+export async function POST(request: Request) {
+  const startedAt = Date.now();
+
+  // 1. Kiểm tra cấu hình xác thực
+  if (
+    !process.env.AI_WORKER_AUDIENCE ||
+    !process.env.CLOUD_TASKS_WORKER_SERVICE_ACCOUNT
+  ) {
+    console.error("[AI_WORKER_CONFIG_MISSING]");
+
     return NextResponse.json(
-      { success: false, message: "Invalid token" },
+      {
+        success: false,
+        message: "AI Worker configuration missing",
+      },
+      { status: 500 },
+    );
+  }
+
+  // 2. Xác thực Google OIDC
+  const authenticated =
+    await verifyCloudTasksAuth(request);
+
+  if (!authenticated) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Unauthorized",
+      },
       { status: 401 },
     );
   }
 
+  // 3. Parse request body
   let body: unknown;
 
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json(
-      { success: false, message: "Invalid JSON" },
-      { status: 400 },
-    );
+    console.error("[AI_WORKER_INVALID_JSON]");
+
+    // Payload cố định lỗi: tránh retry không cần thiết
+    return NextResponse.json({
+      success: false,
+      retryable: false,
+      message: "Invalid JSON",
+    });
   }
 
-  if (
-    !body ||
-    typeof body !== "object" ||
-    !("ticketId" in body) ||
-    !("shipperId" in body) ||
-    !("content" in body) ||
-    typeof body.ticketId !== "string" ||
-    typeof body.shipperId !== "string" ||
-    typeof body.content !== "string" ||
-    !body.ticketId.trim() ||
-    !body.shipperId.trim() ||
-    !body.content.trim()
-  ) {
-    return NextResponse.json(
-      { success: false, message: "Invalid task payload" },
-      { status: 400 },
-    );
-  }
-
-  try {
-    const result = await analyzeAndSaveTicket({
-      ticketId: body.ticketId,
-      shipperId: body.shipperId,
-      content: body.content,
-    });
-
-    console.log("[AI_WORKER_SUCCESS]", {
-      ticketId: body.ticketId,
-      cached: result.cached,
-    });
+  // 4. Validate payload
+  if (!isTaskPayload(body)) {
+    console.error("[AI_WORKER_INVALID_PAYLOAD]");
 
     return NextResponse.json({
+      success: false,
+      retryable: false,
+      message: "Invalid task payload",
+    });
+  }
+
+  const {
+    ticketId,
+    shipperId,
+    content,
+  } = body;
+
+  const taskName =
+    request.headers.get("x-cloudtasks-taskname");
+
+  const retryCount =
+    request.headers.get("x-cloudtasks-taskretrycount");
+
+  console.log("[AI_WORKER_STARTED]", {
+    ticketId,
+    shipperId,
+    taskName,
+    retryCount,
+  });
+
+  // 5. Phân tích Gemini + lưu Turso
+  try {
+    await analyzeAndSaveTicket({
+      ticketId,
+      shipperId,
+      content,
+    });
+
+    const durationMs = Date.now() - startedAt;
+
+    console.log("[AI_WORKER_COMPLETED]", {
+      ticketId,
+      durationMs,
+    });
+
+    // Cloud Tasks nhận 2xx => task hoàn tất
+    return NextResponse.json({
       success: true,
-      ticketId: body.ticketId,
+      ticketId,
+      status: "completed",
+      durationMs,
     });
   } catch (error) {
-    console.error("[AI_WORKER_ERROR]", error);
+    const durationMs = Date.now() - startedAt;
 
-    // HTTP 500 để Cloud Tasks có thể retry.
+    console.error("[AI_WORKER_FAILED]", {
+      ticketId,
+      taskName,
+      retryCount,
+      durationMs,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unknown error",
+    });
+
+    // Cloud Tasks có thể retry theo cấu hình queue.
     return NextResponse.json(
       {
         success: false,
+        ticketId,
+        status: "failed",
         message: "AI analysis failed",
       },
       { status: 500 },

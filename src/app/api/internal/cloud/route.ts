@@ -1,4 +1,3 @@
-
 import { getVercelOidcToken } from "@vercel/oidc";
 import { ExternalAccountClient } from "google-auth-library";
 import { NextResponse } from "next/server";
@@ -22,10 +21,8 @@ export async function GET(request: Request) {
   // 2. Kiểm tra biến môi trường
   const requiredEnv = {
     GCP_PROJECT_NUMBER: process.env.GCP_PROJECT_NUMBER,
-    GCP_SERVICE_ACCOUNT_EMAIL:
-      process.env.CLOUD_TASKS_SERVICE_ACCOUNT,
-    GCP_WORKLOAD_IDENTITY_POOL_ID:
-      process.env.GCP_WORKLOAD_IDENTITY_POOL_ID,
+    GCP_SERVICE_ACCOUNT_EMAIL: process.env.CLOUD_TASKS_SERVICE_ACCOUNT,
+    GCP_WORKLOAD_IDENTITY_POOL_ID: process.env.GCP_WORKLOAD_IDENTITY_POOL_ID,
     GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID:
       process.env.GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID,
   };
@@ -49,8 +46,7 @@ export async function GET(request: Request) {
   const projectNumber = requiredEnv.GCP_PROJECT_NUMBER!;
   const serviceAccount = requiredEnv.GCP_SERVICE_ACCOUNT_EMAIL!;
   const poolId = requiredEnv.GCP_WORKLOAD_IDENTITY_POOL_ID!;
-  const providerId =
-    requiredEnv.GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID!;
+  const providerId = requiredEnv.GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID!;
 
   // 3. Lấy Vercel OIDC token
   let oidcToken: string;
@@ -84,8 +80,7 @@ export async function GET(request: Request) {
     const client = ExternalAccountClient.fromJSON({
       type: "external_account",
       audience,
-      subject_token_type:
-        "urn:ietf:params:oauth:token-type:jwt",
+      subject_token_type: "urn:ietf:params:oauth:token-type:jwt",
       token_url: "https://sts.googleapis.com/v1/token",
       service_account_impersonation_url:
         "https://iamcredentials.googleapis.com/v1/projects/-/" +
@@ -99,9 +94,7 @@ export async function GET(request: Request) {
       throw new Error("Không tạo được Google Auth Client");
     }
 
-    client.scopes = [
-      "https://www.googleapis.com/auth/cloud-platform",
-    ];
+    client.scopes = ["https://www.googleapis.com/auth/cloud-platform"];
 
     const result = await client.getAccessToken();
 
@@ -125,16 +118,59 @@ export async function GET(request: Request) {
         },
       },
     );
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[CLOUD_TEST_WIF_ERROR]", error);
+
+    const err = error as {
+      message?: string;
+      code?: string | number;
+      response?: {
+        status?: number;
+        data?: {
+          error?:
+            | string
+            | {
+                code?: number;
+                status?: string;
+                message?: string;
+              };
+          error_description?: string;
+        };
+      };
+    };
+
+    const googleError = err.response?.data?.error;
+
+    const errorCode =
+      typeof googleError === "string"
+        ? googleError
+        : (googleError?.status ?? err.code ?? null);
+
+    const errorMessage: string =
+      (typeof googleError === "object" && googleError !== null
+        ? googleError.message
+        : undefined) ??
+      err.response?.data?.error_description ??
+      err.message ??
+      "Unknown error";
 
     return NextResponse.json(
       {
         success: false,
         step: "google_wif",
         message: "Không thể xác thực Google Cloud WIF",
+        debug: {
+          code: errorCode,
+          httpStatus: err.response?.status ?? null,
+          reason: errorMessage.slice(0, 400),
+        },
       },
-      { status: 500 },
+      {
+        status: 500,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      },
     );
   }
 }

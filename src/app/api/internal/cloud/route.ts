@@ -1,7 +1,13 @@
+
 import { getVercelOidcToken } from "@vercel/oidc";
 import { ExternalAccountClient } from "google-auth-library";
 import { NextResponse } from "next/server";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request) {
+  // 1. Xác thực API test
   const secret = process.env.INTERNAL_TEST_SECRET;
   const receivedSecret = request.headers.get("x-test-secret");
 
@@ -9,37 +15,86 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         success: false,
-        message: "Unauthorized internal cloud",
-        debug: {
-          envExists: Boolean(secret),
-          headerExists: Boolean(receivedSecret),
-          matched: Boolean(secret) && receivedSecret === secret,
-        },
+        step: "internal_auth",
+        message: "Unauthorized",
       },
       { status: 401 },
     );
   }
 
+  // 2. Kiểm tra biến môi trường
+  const requiredEnv = {
+    GCP_PROJECT_NUMBER: process.env.GCP_PROJECT_NUMBER,
+    GCP_SERVICE_ACCOUNT_EMAIL:
+      process.env.CLOUD_TASKS_SERVICE_ACCOUNT,
+    GCP_WORKLOAD_IDENTITY_POOL_ID:
+      process.env.GCP_WORKLOAD_IDENTITY_POOL_ID,
+    GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID:
+      process.env.GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID,
+  };
+
+  const missing = Object.entries(requiredEnv)
+    .filter(([, value]) => !value)
+    .map(([key]) => key);
+
+  if (missing.length > 0) {
+    return NextResponse.json(
+      {
+        success: false,
+        step: "environment",
+        message: "Thiếu biến môi trường",
+        missing,
+      },
+      { status: 500 },
+    );
+  }
+
+  const projectNumber = requiredEnv.GCP_PROJECT_NUMBER!;
+  const serviceAccount = requiredEnv.GCP_SERVICE_ACCOUNT_EMAIL!;
+  const poolId = requiredEnv.GCP_WORKLOAD_IDENTITY_POOL_ID!;
+  const providerId =
+    requiredEnv.GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID!;
+
+  // 3. Lấy Vercel OIDC token
+  let oidcToken: string;
+
   try {
-    const projectId = process.env.GCP_PROJECT_ID!;
-    const projectNumber = process.env.GCP_PROJECT_NUMBER!;
-    const serviceAccount = process.env.GCP_SERVICE_ACCOUNT_EMAIL!;
-    const poolId = process.env.GCP_WORKLOAD_IDENTITY_POOL_ID!;
-    const providerId = process.env.GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID!;
+    oidcToken = await getVercelOidcToken();
+
+    if (!oidcToken) {
+      throw new Error("Vercel OIDC token is empty");
+    }
+  } catch (error) {
+    console.error("[CLOUD_TEST_OIDC_ERROR]", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        step: "vercel_oidc",
+        message: "Không lấy được Vercel OIDC token",
+      },
+      { status: 500 },
+    );
+  }
+
+  // 4. Đổi Vercel OIDC token thành Google Access Token
+  try {
+    const audience =
+      `//iam.googleapis.com/projects/${projectNumber}` +
+      `/locations/global/workloadIdentityPools/${poolId}` +
+      `/providers/${providerId}`;
 
     const client = ExternalAccountClient.fromJSON({
       type: "external_account",
-      audience:
-        `//iam.googleapis.com/projects/${projectNumber}` +
-        `/locations/global/workloadIdentityPools/${poolId}` +
-        `/providers/${providerId}`,
-      subject_token_type: "urn:ietf:params:oauth:token-type:jwt",
+      audience,
+      subject_token_type:
+        "urn:ietf:params:oauth:token-type:jwt",
       token_url: "https://sts.googleapis.com/v1/token",
       service_account_impersonation_url:
-        `https://iamcredentials.googleapis.com/v1/projects/-/` +
+        "https://iamcredentials.googleapis.com/v1/projects/-/" +
         `serviceAccounts/${serviceAccount}:generateAccessToken`,
       subject_token_supplier: {
-        getSubjectToken: getVercelOidcToken,
+        getSubjectToken: async () => oidcToken,
       },
     });
 
@@ -47,48 +102,40 @@ export async function GET(request: Request) {
       throw new Error("Không tạo được Google Auth Client");
     }
 
-    client.scopes = ["https://www.googleapis.com/auth/cloud-platform"];
+    client.scopes = [
+      "https://www.googleapis.com/auth/cloud-platform",
+    ];
 
-    const tokenResult = await client.getAccessToken();
+    const result = await client.getAccessToken();
 
-    if (!tokenResult.token) {
-      throw new Error("Không lấy được Google Access Token");
+    if (!result.token) {
+      throw new Error("Google Access Token is empty");
     }
 
-    // Chỉ đọc thông tin queue, không tạo task.
-    const queueUrl =
-      `https://cloudtasks.googleapis.com/v2/projects/${projectId}` +
-      `/locations/asia-southeast1/queues/ticket-ai-queue`;
-
-    const response = await fetch(queueUrl, {
-      headers: {
-        Authorization: `Bearer ${tokenResult.token}`,
-      },
-      cache: "no-store",
-    });
-
-    const data = await response.json();
+    console.log("[CLOUD_TEST_WIF_SUCCESS]");
 
     return NextResponse.json(
       {
-        success: response.ok,
-        message: response.ok
-          ? "Vercel đã kết nối Google Cloud Tasks"
-          : "Không thể đọc Cloud Tasks Queue",
-        status: response.status,
-        queue: response.ok ? data.name : undefined,
-        error: response.ok ? undefined : data.error,
+        success: true,
+        step: "google_wif",
+        message: "Vercel kết nối Google Cloud WIF thành công",
+        authenticated: true,
       },
-      { status: response.ok ? 200 : response.status },
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      },
     );
   } catch (error) {
-    console.error("[CLOUD_TASKS_TEST_ERROR]", error);
+    console.error("[CLOUD_TEST_WIF_ERROR]", error);
 
     return NextResponse.json(
       {
         success: false,
-        message:
-          error instanceof Error ? error.message : "Lỗi kết nối Google Cloud",
+        step: "google_wif",
+        message: "Không thể xác thực Google Cloud WIF",
       },
       { status: 500 },
     );

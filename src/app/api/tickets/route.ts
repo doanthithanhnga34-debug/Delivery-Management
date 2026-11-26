@@ -1,4 +1,6 @@
 import { enqueueTicketAnalysis } from "@/server/modules/ai/queue/ticketAnalysis.queue";
+import { getCompletedTicketAnalyses } from "@/server/modules/ai/services/analysisRepo";
+import { mergeTicketAnalysis } from "@/server/modules/ai/services/ticketAnalysis.mapper";
 import { analyzeAndSaveTicket } from "@/server/modules/ai/services/ticketAnalysisPresistance";
 import { analyzeTicket } from "@/server/modules/message/extractMessage.service";
 import { getTicketSheet } from "@/server/modules/tickets/ticket.repository";
@@ -19,7 +21,29 @@ export async function GET(request: Request) {
       );
     }
     const tickets = await getTicketSheet(shipperName);
-    const analyzedTickets = tickets.map((ticket) => analyzeTicket(ticket));
+
+    const regexTickets = tickets.map((ticket) => analyzeTicket(ticket));
+    const ticketIds = tickets.map((ticket) => ticket.id);
+
+   let analyzedTickets = regexTickets;
+
+   try{
+    const aiMap = await getCompletedTicketAnalyses(ticketIds);
+    analyzedTickets = regexTickets.map((ticket) => mergeTicketAnalysis(ticket, aiMap.get(ticket.id)))
+   console.log("[GET_TICKETS_ANALYSIS]", {
+        shipperName,
+        totalTickets: tickets.length,
+        aiRecords: aiMap.size,
+      }); 
+  }catch (error) {
+      console.error("[GET_TICKETS_AI_FALLBACK]", {
+        shipperName,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Unknown error",
+      });
+    }
     return NextResponse.json({
       success: true,
       total: analyzedTickets.length,

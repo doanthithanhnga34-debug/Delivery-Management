@@ -16,6 +16,15 @@ export interface StoredAnalysis {
   analysis: TicketAnalysis | null;
 }
 
+export type SavedTicketAnalysis = {
+  ticketId: string;
+  shipperId: string;
+  contentHash: string;
+  analysisVersion: string;
+  analysisJson: string;
+};
+
+
 export function hashTicketContent(content: string): string {
   return createHash("sha256").update(content, "utf-8").digest("hex");
 }
@@ -120,4 +129,65 @@ export async function deleteExpiredAnalyses(
   });
 
   return result.rowsAffected;
+}
+
+const BATCH_SIZE = 100;
+
+export async function getCompletedTicketAnalyses(
+  ticketIds: string[],
+): Promise<Map<string, SavedTicketAnalysis>> {
+  const db = getTursoClient();
+
+  const uniqueIds = [...new Set(ticketIds.filter(Boolean))];
+
+  const results = new Map<string, SavedTicketAnalysis>();
+
+  if (uniqueIds.length === 0) {
+    return results;
+  }
+
+  for (let i = 0; i < uniqueIds.length; i += BATCH_SIZE) {
+    const batch = uniqueIds.slice(i, i + BATCH_SIZE);
+
+    const placeholders = batch.map(() => "?").join(", ");
+
+    const response = await db.execute({
+      sql: `
+        SELECT
+          ticket_id,
+          shipper_id,
+          content_hash,
+          analysis_version,
+          analysis_json
+        FROM ticket_analysis
+        WHERE ticket_id IN (${placeholders})
+          AND status = 'completed'
+          AND analysis_version = 'v1'
+          AND analysis_json IS NOT NULL
+      `,
+      args: batch,
+    });
+
+    for (const row of response.rows) {
+      if (
+        typeof row.ticket_id !== "string" ||
+        typeof row.shipper_id !== "string" ||
+        typeof row.content_hash !== "string" ||
+        typeof row.analysis_version !== "string" ||
+        typeof row.analysis_json !== "string"
+      ) {
+        continue;
+      }
+
+      results.set(row.ticket_id, {
+        ticketId: row.ticket_id,
+        shipperId: row.shipper_id,
+        contentHash: row.content_hash,
+        analysisVersion: row.analysis_version,
+        analysisJson: row.analysis_json,
+      });
+    }
+  }
+
+  return results;
 }

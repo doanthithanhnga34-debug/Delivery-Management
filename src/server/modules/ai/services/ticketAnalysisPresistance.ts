@@ -56,35 +56,41 @@ export async function analyzeAndSaveTicket({
 
   const aiResult = await analyzeTicketWithAI(content);
 
+  const now = new Date().toISOString();
+
   await db.execute({
     sql: `
-      INSERT INTO ticket_analysis (
-        ticket_id,
-        shipper_id,
-        content_hash,
-        analysis_json,
-        status,
-        analysis_version,
-        analyzed_at,
-        updated_at
-      )
-      VALUES (?, ?, ?, ?, 'completed', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    INSERT INTO ticket_analysis (
+      ticket_id,
+      shipper_id,
+      content_hash,
+      analysis_json,
+      status,
+      analysis_version,
+      created_at,
+      analyzed_at,
+      updated_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 
-      ON CONFLICT(ticket_id) DO UPDATE SET
-        shipper_id = excluded.shipper_id,
-        content_hash = excluded.content_hash,
-        analysis_json = excluded.analysis_json,
-        status = 'completed',
-        analysis_version = excluded.analysis_version,
-        analyzed_at = CURRENT_TIMESTAMP,
-        updated_at = CURRENT_TIMESTAMP
-    `,
+    ON CONFLICT(ticket_id) DO UPDATE SET
+      content_hash = excluded.content_hash,
+      analysis_json = excluded.analysis_json,
+      status = excluded.status,
+      analysis_version = excluded.analysis_version,
+      analyzed_at = excluded.analyzed_at,
+      updated_at = excluded.updated_at
+  `,
     args: [
       ticketId,
       shipperId,
       contentHash,
       JSON.stringify(aiResult.analysis),
+      "completed",
       ANALYSIS_VERSION,
+      now,
+      now,
+      now,
     ],
   });
 

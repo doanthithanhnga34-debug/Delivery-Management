@@ -29,13 +29,92 @@ QUY TẮC BẮT BUỘC
   ngữ cảnh của từng lần.
 - Nếu không xác định được, trả về null.
 
-3. NHÀ XE / CHÀNH
-- Chỉ xác định khi tin nhắn thực sự đề cập đến
-  nhà xe hoặc chành vận chuyển.
+
+3. NHÀ XE / CHÀNH VÀ PHÂN BIỆT ĐỊA CHỈ
+
+A. NHẬN DIỆN NHÀ XE
+
+- Nhận diện các cụm:
+  "nhà xe", "chành xe", "chành", "gửi xe",
+  "gởi xe", "bến xe", "gửi nhà xe".
 - Không nhầm "giao hàng", "gửi đơn" hoặc tên công ty
-  với nhà xe.
-- Nếu không có nhà xe, hasCarrier=false và name,
-  address đều null.
+  thông thường với nhà xe.
+- Nếu không có nhà xe:
+  carrier.hasCarrier=false.
+  carrier.name=null.
+  carrier.address=null.
+
+B. PHÂN LOẠI ĐỊA CHỈ
+
+- Địa chỉ xuất hiện ngay sau tên nhà xe/chành xe
+  thường là địa chỉ của nhà xe.
+- Địa chỉ nằm trong dấu ngoặc đơn sau tên nhà xe
+  phải được ưu tiên phân loại là carrier.address.
+- Không được tự động sử dụng carrier.address
+  làm deliveryAddress.
+- Không được lấy số điện thoại của nhà xe
+  làm thông tin địa chỉ.
+
+C. CHỈ CÓ ĐỊA CHỈ NHÀ XE
+
+Nếu tin nhắn có nhà xe/chành xe và chỉ tìm thấy
+một địa chỉ duy nhất thuộc nhà xe:
+
+- deliveryAddress=null.
+- addressConfidence=null.
+- deliveryLocation=null.
+- carrier.hasCarrier=true.
+- carrier.name= tên nhà xe nếu xác định được.
+- carrier.address= địa chỉ nhà xe nếu xác định được.
+
+Không được suy luận địa chỉ giao hàng từ địa chỉ nhà xe.
+
+D. CÓ CẢ ĐỊA CHỈ GIAO VÀ ĐỊA CHỈ NHÀ XE
+
+Nếu tin nhắn có hai địa chỉ khác nhau:
+
+- Địa chỉ giao hàng trực tiếp cho khách
+  đưa vào deliveryAddress.
+- Địa chỉ của nhà xe đưa vào carrier.address.
+- Hai địa chỉ phải được phân loại dựa vào ngữ cảnh.
+
+Ví dụ:
+"Giao 126 Cô Bắc Q1, gửi chành xe A Đạt
+tại 345 Gia Phú P1 Q6"
+
+deliveryAddress="126 Cô Bắc Q1"
+carrier.address="345 Gia Phú P1 Q6"
+
+E. TRƯỜNG HỢP KHÔNG RÕ
+
+- Có tên nhà xe nhưng không có địa chỉ giao hàng
+  riêng biệt thì deliveryAddress=null.
+- Không tự suy diễn địa chỉ giao hàng dựa vào
+  tên người nhận, số điện thoại hoặc tên nhà xe.
+- Chỉ điền deliveryAddress khi có đủ căn cứ
+  xác định địa chỉ giao hàng trực tiếp.
+
+F. VÍ DỤ BẮT BUỘC
+
+Input:
+"CHUYỂN XBG ĐÓNG 1 THÙNG Phúc Mỹ Tho
+0349522351 tổng đơn 1.000 ship 30
+chành xe A Đạt (345 gia phú,p1,q6) 0908466252"
+
+Output:
+{
+  "deliveryAddress": null,
+  "addressConfidence": null,
+  "deliveryLocation": null,
+  "carrier": {
+    "name": "chành xe A Đạt",
+    "address": "345 gia phú,p1,q6",
+    "hasCarrier": true
+  },
+  "payment": null,
+  "invoiceAddress": null
+}
+
 
 4. THANH TOÁN
 - "thu khách": cash, label "Thu khách".

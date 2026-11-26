@@ -1,10 +1,7 @@
-import { Button } from "@/components/ui/button";
+
 import { AnalyzedTicket } from "@/types/ticket.types";
 import { formatDate, formatDateTime } from "@/utils/date";
-import { Download, Loader2 } from "lucide-react";
-import { exportReportImage } from "../exportReportImage";
-import { useMemo, useRef, useState } from "react";
-import { toast } from "@/components/ui/toast";
+import {  useRef, useState } from "react";
 import { DailyReportTable } from "../dailyReportTable";
 
 interface DailyReportExportProps {
@@ -13,7 +10,6 @@ interface DailyReportExportProps {
   initialDate?: string;
 }
 const TIME_ZONE = "Asia/Ho_Chi_Minh";
-const REPORT_WIDTH = 900;
 
 function getDateKey(value: string | Date): string {
   const date = value instanceof Date ? value : new Date(value);

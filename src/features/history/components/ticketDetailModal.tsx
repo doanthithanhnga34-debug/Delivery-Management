@@ -36,7 +36,7 @@ export const TicketDetailModal: React.FC<TicketDetailProps> = ({
           <DialogTitle>
             <div className="text-[10px] flex gap-2">
               <span className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-lg">
-                {ticket.id}
+                #{ticket.id.slice(0, 4).toUpperCase()}
               </span>
               <span className="text-xs text-zinc-500 dark:text-zinc-400">
                 {formatDateTime(ticket.createdAt)}

@@ -6,8 +6,6 @@ import { mapSheetRowToTicket } from "./ticket.mapper";
 const spreadsheetId = process.env.GOOGLE_SPREADSHEET_SHIPPER_ID;
 const DAYS_TO_FETCH = 30;
 
-
-
 export async function saveTicketToSheet(input: SaveTicketInput) {
   if (!spreadsheetId) {
     throw new Error("Missing GOOGLE_SHEETS_SHIPPER_TEST_ID");
@@ -58,9 +56,9 @@ export async function saveTicketToSheet(input: SaveTicketInput) {
 }
 
 function parseSheetDate(value: string): Date | null {
-  const match = value.trim().match(
-    /^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/,
-  );
+  const match = value
+    .trim()
+    .match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
 
   if (!match) return null;
 
@@ -88,8 +86,7 @@ function parseSheetDate(value: string): Date | null {
     hourCycle: "h23",
   }).formatToParts(date);
 
-  const get = (type: string) =>
-    parts.find((part) => part.type === type)?.value;
+  const get = (type: string) => parts.find((part) => part.type === type)?.value;
 
   if (
     Number(get("day")) !== Number(day) ||
@@ -104,9 +101,8 @@ function parseSheetDate(value: string): Date | null {
 
   return date;
 }
-export async function getTicketSheet(
-  shipperCode: string,
-): Promise<Ticket[]> {
+
+export async function getTicketSheet(shipperCode: string): Promise<Ticket[]> {
   const normalizedCode = shipperCode.trim().toUpperCase();
   const config = shipperSheetConfigs[normalizedCode];
 
@@ -118,9 +114,7 @@ export async function getTicketSheet(
   const escapedSheetName = config.sheetName.replace(/'/g, "''");
 
   // Cột timestamp trong cấu hình đang dùng index từ 0.
-  const timestampColumn = String.fromCharCode(
-    65 + config.timestampColumn,
-  );
+  const timestampColumn = String.fromCharCode(65 + config.timestampColumn);
 
   const timestampResponse = await sheets.spreadsheets.values.get({
     spreadsheetId,
@@ -154,9 +148,11 @@ export async function getTicketSheet(
   const firstRow = Math.min(...matchingRowNumbers);
   const lastRow = Math.max(...matchingRowNumbers);
 
+  const lastColumn = columnNumberToLetter(config.totalColumns);
+
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `'${escapedSheetName}'!A${firstRow}:L${lastRow}`,
+    range: `'${escapedSheetName}'!A${firstRow}:${lastColumn}${lastRow}`,
     valueRenderOption: "FORMATTED_VALUE",
   });
 

@@ -3,7 +3,7 @@ import { createGoogleSheetsClient } from "@/server/integrations/googleSheet/goog
 import { SaveTicketInput, Ticket } from "@/types/ticket.types";
 import { mapSheetRowToTicket } from "./ticket.mapper";
 
-const spreadsheetId = "1hqEg879-W7XGKqIZe1u6e9sdSDAaL1P8rv_9TWIII6I";
+const spreadsheetId = process.env.GOOGLE_SPREADSHEET_SHIPPER_ID;
 const DAYS_TO_FETCH = 30;
 
 

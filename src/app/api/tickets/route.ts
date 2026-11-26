@@ -37,24 +37,53 @@ export async function GET(request: Request) {
     );
   }
 }
+type CreateTicketRequest = {
+  shipperName: string;
+  content: string;
+  shippingFee: number;
+  otherFee: number;
+};
+
+function isValidTicketInput(
+  value: unknown,
+): value is CreateTicketRequest {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const data = value as Record<string, unknown>;
+
+  return (
+    typeof data.shipperName === "string" &&
+    data.shipperName.trim().length > 0 &&
+    typeof data.content === "string" &&
+    data.content.trim().length > 0 &&
+    data.content.length <= 20000 &&
+    typeof data.shippingFee === "number" &&
+    Number.isSafeInteger(data.shippingFee) &&
+    data.shippingFee >= 0 &&
+    typeof data.otherFee === "number" &&
+    Number.isSafeInteger(data.otherFee) &&
+    data.otherFee >= 0
+  );
+}
 export async function POST(request: Request) {
-  const body: unknown = await request.json();
+  let body: unknown;
+
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      {
+        success: false,
+        message: "JSON không hợp lệ",
+      },
+      { status: 400 },
+    );
+  }
 
   if (
-    !body ||
-    typeof body !== "object" ||
-    !("shipperName" in body) ||
-    !("content" in body) ||
-    !("shippingFee" in body) ||
-    !("otherFee" in body) ||
-    typeof body.shipperName !== "string" ||
-    typeof body.content !== "string" ||
-    typeof body.shippingFee !== "number" ||
-    typeof body.otherFee !== "number" ||
-    !Number.isFinite(body.shippingFee) ||
-    !Number.isFinite(body.otherFee) ||
-    !body.shipperName.trim() ||
-    !body.content.trim()
+  !isValidTicketInput(body)
   ) {
     return NextResponse.json(
       {
@@ -64,26 +93,41 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  const shipperName = body.shipperName.trim();
+  const shipperName = body.shipperName.trim().toUpperCase();
   const content = body.content.trim();
   const deliveryDate = new Date().toISOString();
+  let ticket: Awaited<ReturnType<typeof createTicket>>;
 
-  console.log("[CREATE_TICKET] Delivery Date:", deliveryDate);
-  const result = await createTicket({
-    shipperName,
-    content,
-    shippingFee: body.shippingFee,
-    otherFee: body.otherFee,
-    deliveryDate,
-  });
 
-  console.log("Result log", result);
+   try {
+    ticket = await createTicket({
+      shipperName,
+      content,
+      shippingFee: body.shippingFee,
+      otherFee: body.otherFee,
+      deliveryDate: new Date().toISOString(),
+    });
 
+    console.log("[TICKET_SAVED]", {
+      ticketId: ticket.ticketId,
+      shipperName,
+    });
+  } catch (error) {
+    console.error("[CREATE_TICKET_ERROR]", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Không thể lưu phiếu giao hàng",
+      },
+      { status: 500 },
+    );
+  }
   let aiStatus: "queued" | "queue_failed" = "queue_failed";
 
   try {
     await enqueueTicketAnalysis({
-      ticketId: result.ticketId,
+      ticketId: ticket.ticketId,
       shipperId: shipperName.toUpperCase(),
       content,
     });
@@ -91,7 +135,7 @@ export async function POST(request: Request) {
     aiStatus = "queued";
   } catch (error) {
     console.error("[AI_QUEUE_ERROR]", {
-      ticketId: result.ticketId,
+      ticketId: ticket.ticketId,
       error,
     });
   }
@@ -100,7 +144,7 @@ export async function POST(request: Request) {
     {
       success: true,
       message: "Đã lưu phiếu vào Google Sheets",
-      data: result,
+      data: ticket,
       ai: {
         status: aiStatus,
       },

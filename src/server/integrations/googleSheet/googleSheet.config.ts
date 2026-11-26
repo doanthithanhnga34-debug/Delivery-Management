@@ -1,5 +1,5 @@
 
-function columnNumberToLetter(columnNumber: number): string {
+export function columnNumberToLetter(columnNumber: number): string {
   let result = "";
   let number = columnNumber;
 

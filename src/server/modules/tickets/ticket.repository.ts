@@ -2,6 +2,7 @@ import { shipperSheetConfigs } from "@/server/config/shipperSheet.config";
 import { createGoogleSheetsClient } from "@/server/integrations/googleSheet/googleSheet.client";
 import { SaveTicketInput, Ticket } from "@/types/ticket.types";
 import { mapSheetRowToTicket } from "./ticket.mapper";
+import { columnNumberToLetter } from "@/server/integrations/googleSheet/googleSheet.config";
 
 const spreadsheetId = process.env.GOOGLE_SPREADSHEET_SHIPPER_ID;
 const DAYS_TO_FETCH = 30;

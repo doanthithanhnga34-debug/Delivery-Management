@@ -33,7 +33,7 @@ export const TicketCard: React.FC<TicketCardProps> = ({
       <article className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-blue-600">
-            #{ticket.id}
+            #{ticket.id.slice(0, 4).toUpperCase()}
           </span>
 
           <span className="flex items-center gap-1 text-xs text-zinc-500">

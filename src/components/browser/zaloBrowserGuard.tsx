@@ -1,3 +1,4 @@
+"use client"
 import { isAndroid, isZaloBrowser, openExternalBrowser } from "@/utils/browser";
 import { Copy, ExternalLink, Globe } from "lucide-react";
 import { useEffect, useState } from "react";

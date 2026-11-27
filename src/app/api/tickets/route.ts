@@ -8,9 +8,16 @@ import { createTicket } from "@/server/modules/tickets/ticket.service";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
+  const startedAt = performance.now();
+
   try {
     const { searchParams } = new URL(request.url);
-    const shipperName = searchParams.get("shipperName")?.trim().toUpperCase();
+
+    const shipperName = searchParams
+      .get("shipperName")
+      ?.trim()
+      .toUpperCase();
+
     if (!shipperName) {
       return NextResponse.json(
         {
@@ -20,30 +27,75 @@ export async function GET(request: Request) {
         { status: 400 },
       );
     }
+
+    // 1. Google Sheets
+    const sheetStartedAt = performance.now();
+
     const tickets = await getTicketSheet(shipperName);
 
-    const regexTickets = tickets.map((ticket) => analyzeTicket(ticket));
+    const sheetDuration = performance.now() - sheetStartedAt;
+
+    // 2. Regex
+    const regexStartedAt = performance.now();
+
+    const regexTickets = tickets.map(analyzeTicket);
     const ticketIds = tickets.map((ticket) => ticket.id);
 
-   let analyzedTickets = regexTickets;
+    const regexDuration = performance.now() - regexStartedAt;
 
-   try{
-    const aiMap = await getCompletedTicketAnalyses(ticketIds);
-    analyzedTickets = regexTickets.map((ticket) => mergeTicketAnalysis(ticket, aiMap.get(ticket.id)))
-   console.log("[GET_TICKETS_ANALYSIS]", {
-        shipperName,
-        totalTickets: tickets.length,
-        aiRecords: aiMap.size,
-      }); 
-  }catch (error) {
-      console.error("[GET_TICKETS_AI_FALLBACK]", {
-        shipperName,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Unknown error",
-      });
+    let analyzedTickets = regexTickets;
+
+    let aiDuration = 0;
+    let mergeDuration = 0;
+    let aiRecords = 0;
+
+    // 3. AI database
+    if (ticketIds.length > 0) {
+      const aiStartedAt = performance.now();
+
+      try {
+        const aiMap =
+          await getCompletedTicketAnalyses(ticketIds);
+
+        aiDuration = performance.now() - aiStartedAt;
+        aiRecords = aiMap.size;
+
+        // 4. Merge
+        const mergeStartedAt = performance.now();
+
+        analyzedTickets = regexTickets.map((ticket) =>
+          mergeTicketAnalysis(
+            ticket,
+            aiMap.get(ticket.id),
+          ),
+        );
+
+        mergeDuration =
+          performance.now() - mergeStartedAt;
+      } catch (error) {
+        aiDuration = performance.now() - aiStartedAt;
+
+        console.error("[GET_TICKETS_AI_FALLBACK]", {
+          shipperName,
+          message:
+            error instanceof Error
+              ? error.message
+              : "Unknown error",
+        });
+      }
     }
+
+    console.log("[GET_TICKETS_PERFORMANCE]", {
+      shipperName,
+      totalTickets: tickets.length,
+      aiRecords,
+      googleSheetsMs: Math.round(sheetDuration),
+      regexMs: Math.round(regexDuration),
+      aiDatabaseMs: Math.round(aiDuration),
+      mergeMs: Math.round(mergeDuration),
+      totalMs: Math.round(performance.now() - startedAt),
+    });
+
     return NextResponse.json({
       success: true,
       total: analyzedTickets.length,

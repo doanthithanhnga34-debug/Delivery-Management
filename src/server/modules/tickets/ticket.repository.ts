@@ -56,51 +56,43 @@ export async function saveTicketToSheet(input: SaveTicketInput) {
   };
 }
 
+const TIMEZONE_OFFSET_MS = 7 * 60 * 60 * 1000;
+
 function parseSheetDate(value: string): Date | null {
-  const match = value
-    .trim()
-    .match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  const match = value.trim().match(
+    /^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/
+  );
 
   if (!match) return null;
 
-  const [, day, month, year, hour, minute, second = "0"] = match;
+  const [d, m, y, h, min, s = "0"] = match;
 
-  const timestamp = Date.UTC(
-    Number(year),
-    Number(month) - 1,
-    Number(day),
-    Number(hour) - 7,
-    Number(minute),
-    Number(second),
+  const day = Number(d);
+  const month = Number(m);
+  const year = Number(y);
+  const hour = Number(h);
+  const minute = Number(min);
+  const second = Number(s);
+
+  const localDate = new Date(
+    Date.UTC(year, month - 1, day, hour, minute, second)
   );
 
-  const date = new Date(timestamp);
-
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Asia/Ho_Chi_Minh",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(date);
-
-  const get = (type: string) => parts.find((part) => part.type === type)?.value;
-
+  // Kiểm tra ngày giờ hợp lệ
   if (
-    Number(get("day")) !== Number(day) ||
-    Number(get("month")) !== Number(month) ||
-    Number(get("year")) !== Number(year) ||
-    Number(get("hour")) !== Number(hour) ||
-    Number(get("minute")) !== Number(minute) ||
-    Number(get("second")) !== Number(second)
+    localDate.getUTCFullYear() !== year ||
+    localDate.getUTCMonth() !== month - 1 ||
+    localDate.getUTCDate() !== day ||
+    localDate.getUTCHours() !== hour ||
+    localDate.getUTCMinutes() !== minute ||
+    localDate.getUTCSeconds() !== second
   ) {
     return null;
   }
 
-  return date;
+  return new Date(
+    localDate.getTime() - TIMEZONE_OFFSET_MS
+  );
 }
 
 export async function getTicketSheet(shipperCode: string): Promise<Ticket[]> {

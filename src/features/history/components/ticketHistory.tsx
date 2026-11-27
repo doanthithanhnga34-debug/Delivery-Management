@@ -26,10 +26,7 @@ import {
   DailyReportTable,
 } from "@/features/reports/dailyReportTable";
 import { toast } from "@/components/ui/toast";
-import {
-  createReportImage,
-  createReportImages,
-} from "@/features/reports/exportReportImage";
+import { createReportImages } from "@/features/reports/exportReportImage";
 
 const filterOptions: {
   value: DateFilterType;
@@ -46,12 +43,20 @@ export function TicketHistory({ today }: { today: string }) {
 
   const { tickets, isLoading, error, refetch } = useTicketHistory(shipperName);
 
-  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(() => parseISO(today));
   const [dateFilter, setDateFilter] = useState<DateFilterType>("today");
   const reportRef = useRef<HTMLDivElement | null>(null);
 
   const [reportFile, setReportFile] = useState<File | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const maxDate = parseISO(today);
+  const minDate = subDays(maxDate, 6);
+
+  console.log("[DATE_RANGE]", {
+  today,
+  minDate: format(minDate, "dd/MM/yyyy"),
+  maxDate: format(maxDate, "dd/MM/yyyy"),
+});
 
   const filteredTickets = useMemo(() => {
     const todayDate = parseISO(today);
@@ -79,7 +84,12 @@ export function TicketHistory({ today }: { today: string }) {
             return ticketDate >= last7Days && ticketDate <= today;
 
           case "custom":
-            return selectedDateKey !== null && ticketDate === selectedDateKey;
+            return (
+              selectedDateKey !== null &&
+              selectedDateKey >= last7Days &&
+              selectedDateKey <= today &&
+              ticketDate === selectedDateKey
+            );
 
           default:
             return false;
@@ -117,154 +127,68 @@ export function TicketHistory({ today }: { today: string }) {
     () => calcReportSummary(filteredTickets),
     [filteredTickets],
   );
-
-  // async function handleExportAndShare() {
-  //   if (!reportRef.current || isExporting) return;
-
-  //   if (filteredTickets.length === 0) {
-  //     toast.add({
-  //       type: "warning",
-  //       title: "Không có dữ liệu",
-  //       description: "Không có phiếu giao hàng để xuất báo cáo.",
-  //     });
-  //     return;
-  //   }
-
-  //   setIsExporting(true);
-
-  //   try {
-  //     await document.fonts.ready;
-
-  //     const element = reportRef.current;
-
-  //     const safeShipperName = shipperName
-  //       .trim()
-  //       .replace(/[^\p{L}\p{N}-]+/gu, "-");
-
-  //     const filename = `bao-cao-${safeShipperName}-${today}.png`;
-
-  //     const file = await createReportImage(element, filename);
-
-  //     if (
-  //       typeof navigator.share === "function" &&
-  //       typeof navigator.canShare === "function" &&
-  //       navigator.canShare({ files: [file] })
-  //     ) {
-  //       try {
-  //         await navigator.share({
-  //           files: [file],
-  //         });
-
-  //         return;
-  //       } catch (error) {
-  //         if (error instanceof DOMException && error.name === "AbortError") {
-  //           return;
-  //         }
-
-  //         console.warn("[SHARE_REPORT_ERROR]", error);
-  //       }
-  //     }
-  //     const url = URL.createObjectURL(file);
-
-  //     try {
-  //       const link = document.createElement("a");
-  //       link.href = url;
-  //       link.download = filename;
-
-  //       document.body.appendChild(link);
-  //       link.click();
-  //       link.remove();
-  //     } finally {
-  //       window.setTimeout(() => {
-  //         URL.revokeObjectURL(url);
-  //       }, 60_000);
-  //     }
-
-  //     toast.add({
-  //       type: "info",
-  //       title: "Đã tạo ảnh báo cáo",
-  //       description:
-  //         "Không thể mở chia sẻ trực tiếp. Hãy chọn ảnh đã tải trong Zalo để gửi.",
-  //     });
-  //   } catch (error) {
-  //     console.error("[EXPORT_REPORT_ERROR]", error);
-
-  //     toast.add({
-  //       type: "error",
-  //       title: "Xuất báo cáo thất bại",
-  //       description:
-  //         error instanceof Error ? error.message : "Không thể tạo ảnh báo cáo.",
-  //     });
-  //   } finally {
-  //     setIsExporting(false);
-  //   }
-
-  // }
-
-  // Chỉ đổi khi nội dung báo cáo thực sự đổi, không phụ thuộc tham chiếu mảng
-const reportKey = useMemo(
-  () =>
-    JSON.stringify([
-      shipperName,
-      today,
-      format(selectedDate, "yyyy-MM-dd"),
-      filteredTickets.map((t) => [
-        t.id,
-        t.content,
-        t.shippingFee,
-        t.transportFee,
-        t.otherFee,
+  const reportKey = useMemo(
+    () =>
+      JSON.stringify([
+        shipperName,
+        today,
+        format(selectedDate, "yyyy-MM-dd"),
+        filteredTickets.map((t) => [
+          t.id,
+          t.content,
+          t.shippingFee,
+          t.transportFee,
+          t.otherFee,
+        ]),
       ]),
-    ]),
-  [filteredTickets, shipperName, today, selectedDate],
-);
+    [filteredTickets, shipperName, today, selectedDate],
+  );
 
-// Giữ pages mới nhất để effect đọc mà không cần đưa vào dependency
-const pagesRef = useRef(pages);
-pagesRef.current = pages;
-useEffect(() => {
-  let cancelled = false;
+  // Giữ pages mới nhất để effect đọc mà không cần đưa vào dependency
+  const pagesRef = useRef(pages);
+  pagesRef.current = pages;
+  useEffect(() => {
+    let cancelled = false;
 
-  // Chỉ set khi thực sự cần, tránh re-render thừa
-  setReportFiles((prev) => (prev.length === 0 ? prev : []));
+    // Chỉ set khi thực sự cần, tránh re-render thừa
+    setReportFiles((prev) => (prev.length === 0 ? prev : []));
 
-  const pageCount = pagesRef.current.length;
-  if (pageCount === 0 || !shipperName) {
-    setIsPreparing(false);
-    return;
-  }
-
-  setIsPreparing(true);
-
-  const timer = window.setTimeout(async () => {
-    try {
-      await document.fonts.ready;
-      if (cancelled) return;
-
-      const elements = pageRefs.current
-        .slice(0, pageCount)
-        .filter((el): el is HTMLDivElement => el !== null);
-
-      const safeName = shipperName.trim().replace(/[^\p{L}\p{N}-]+/gu, "-");
-      const files = await createReportImages(
-        elements,
-        `bao-cao-${safeName}-${today}`,
-      );
-
-      if (!cancelled) setReportFiles(files);
-    } catch (e) {
-      console.error("[PREPARE_REPORT_ERROR]", e);
-    } finally {
-      if (!cancelled) setIsPreparing(false);
+    const pageCount = pagesRef.current.length;
+    if (pageCount === 0 || !shipperName) {
+      setIsPreparing(false);
+      return;
     }
-  }, 400);
 
-  return () => {
-    cancelled = true;
-    window.clearTimeout(timer);
-  };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [reportKey]);
+    setIsPreparing(true);
+
+    const timer = window.setTimeout(async () => {
+      try {
+        await document.fonts.ready;
+        if (cancelled) return;
+
+        const elements = pageRefs.current
+          .slice(0, pageCount)
+          .filter((el): el is HTMLDivElement => el !== null);
+
+        const safeName = shipperName.trim().replace(/[^\p{L}\p{N}-]+/gu, "-");
+        const files = await createReportImages(
+          elements,
+          `bao-cao-${safeName}-${today}`,
+        );
+
+        if (!cancelled) setReportFiles(files);
+      } catch (e) {
+        console.error("[PREPARE_REPORT_ERROR]", e);
+      } finally {
+        if (!cancelled) setIsPreparing(false);
+      }
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [reportKey]);
 
   async function handleExportAndShare() {
     if (isExporting || isPreparing) return;
@@ -321,7 +245,6 @@ useEffect(() => {
           disabled={isExporting || isLoading || !shipperName}
           className="flex justify-between items-center rounded-lg gap-2 w-full p-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-500/25"
         >
-          {/* <span>{isPreparing ? "Đang chuẩn bị..." : `Xuất ${reportFiles.length} ảnh`}</span> */}
           <div>
             <ImageIcon className="w-4 h-4 text-white" />
           </div>
@@ -332,15 +255,6 @@ useEffect(() => {
             Xuất ảnh
           </span>
         </button>
-        {/* <div className="absolute -left-[99999px] top-0">
-          <div ref={reportRef}>
-            <DailyReportTable
-              tickets={filteredTickets}
-              shipperName={shipperName}
-              reportDate={format(selectedDate, "dd/MM/yyyy")}
-            />
-          </div>
-        </div> */}
 
         <div className="absolute -left-[99999px] top-0">
           {pages.map((pageTickets, i) => (
@@ -396,6 +310,8 @@ useEffect(() => {
             </span>
             <DatePickerInput
               date={selectedDate}
+              minDate={minDate}
+              maxDate={maxDate}
               onDateChange={(newDate) => {
                 if (!newDate) return;
                 setSelectedDate(newDate);

@@ -15,6 +15,7 @@
   --primary:#2563EB;
   --color-bg: #2563EB;
   --hover-bg:#0b66c2;
+  --ring: #356feb;
   --background: #f5f7fb;
   --foreground: #172033;
   --card: #fff;
@@ -31,7 +32,6 @@
   --destructive: #b4233d;
   --border: #e1e6ef;
   --input: #d9e0ea;
-  --ring: #ef6b78;
   --radius: 0.75rem;
 
 }
